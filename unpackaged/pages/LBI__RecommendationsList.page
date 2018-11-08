@@ -1,0 +1,1254 @@
+<apex:page sidebar="{!showSidebar}"
+            standardController="LBI__Recommendation__c"
+            extensions="LBI.RecommendationsListController"
+            tabStyle="Lattice_Recommendations__tab"
+            id="thePage"
+            standardStylesheets="true"
+            docType="html-5.0"
+            title="{!$Label.lbi__title_lattice_recommendations}"
+            action="{!onload}"
+            showHeader="true" >  <!-- This param appears to be super important when rendering the enhancedlist in SF1, don't remove it without tons of caution. -->
+
+
+	<apex:includeScript value="/support/console/38.0/integration.js"/>
+    <apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__RecommendationListJavascript)}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+    <apex:includeScript value="{!$Resource.LBI__SforceUtility}"  />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__BootstrapResponsiveTabs, 'bootstrap-responsive-tabs/bootstrap-responsive-tabs.js')}"  />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__mixpanel_js)}"  />
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__BootstrapResponsiveTabs, 'bootstrap-responsive-tabs/bootstrap-responsive-tabs.css')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+
+    <script type="text/javascript" >
+        var theEnhancedList = null;
+
+        var mpOldTabName = "{!iFrameSettings.defaultTab}".replace(/([a-z])([A-Z])/g, '$1 $2');
+        var mpBasicReturnObject = {"Page" : "{!$CurrentPage.Name}",
+                                    "OrgID" : "{!$Organization.Id}",
+                                    "CustomerID" : hashCode("{!$User.Id}"),
+                                    "Product Name" : "BIS"};
+
+
+        var mixpanelModule = new MixPanelModule(lejQuery, mpBasicReturnObject, mpOldTabName, {!isEnabledMixPanel}, null,mixPanelShouldTrackActionCallback);
+
+        var isInSalesConsole = isInSalesConsole();
+
+        lejQuery(document).ready(function(){
+			configureView();
+            displaymobileNotification();
+
+            salesforceMenu();
+            backButton();
+            mobileRevenueHide();
+            tabletSpacing();
+            enableDisableSaveButton(false);
+
+            mixpanelModule.sendMpMessage("Page Load");
+
+            setupConsoleModeIfNeeded();
+
+            if (sforce.console) {
+       			sforce.console.setTabTitle('{!JSINHTMLENCODE(selectedRecommendation.DisplayName__c)}');
+       		}
+        });
+
+
+        window.onbeforeunload = function (arg) {
+
+            mixpanelModule.sendMpPageDurationMessage("Page Unload");
+
+        }
+
+        function adjustContainerWidth(){
+            if (isInSalesConsole){
+                lejQuery("#bootstrap-lattice * .container-fluid").addClass("console-container");
+                lejQuery("#bootstrap-lattice").addClass("console-section");
+                lejQuery(".no-more-tables").removeClass("no-more-tables");
+            }
+        }
+
+        function backButton(){
+            if (ForceUI.isSalesforce1()) {
+               lejQuery("#back-button").addClass("sf1-style");
+            } else {
+               lejQuery("#back-button").removeClass("sf1-style");
+            }
+        }
+
+        function salesforceMenu(){
+            if (ForceUI.isSalesforce1()) {
+               lejQuery("#salesforce-menu").addClass("slide-menu");
+            } else {
+               lejQuery("#salesforce-menu").removeClass("slide-menu");
+            }
+        }
+
+        function mobileRevenueHide(){
+            if (ForceUI.isSalesforce1()) {
+               lejQuery("#revenue-hide").addClass("sf1-style");
+            } else {
+               lejQuery("#revenue-hide").removeClass("sf1-style");
+            }
+        }
+
+        function tabletSpacing(){
+            if (ForceUI.isSalesforce1()) {
+               lejQuery(".lattice-details").addClass("tablet-spacing");
+            } else {
+               lejQuery(".lattice-details").removeClass("tablet-spacing");
+            }
+        }
+
+         function toggleClass(element, className){
+            if (!element || !className){
+                return;
+            }
+            var classString = element.className, nameIndex = classString.indexOf(className);
+            if (nameIndex == -1) {
+                classString += ' ' + className;
+            }
+            else {
+                classString = classString.substr(0, nameIndex) + classString.substr(nameIndex+className.length);
+            }
+            element.className = classString;
+        }
+
+        lejQuery('#menu2 li').click(function () {
+           lejQuery('#menu2 li').not(this).removeClass('active');
+           lejQuery(this).addClass('active');
+        });
+
+        function displaymobileNotification(){
+
+            if('{!$CurrentPage.parameters.mobilemessage}'){
+                var cssClass = 'danger';
+
+                if('{!$CurrentPage.parameters.success}' === '1'){
+                    cssClass = 'success';
+                }
+
+                var notifycontainer = lejQuery('<div/>', {
+                    class: 'alert alert-' + cssClass,
+                    role : 'alert',
+                    text :  '{!$CurrentPage.parameters.mobilemessage}'
+                });
+
+                var closebtn = lejQuery('<button/>', {
+                    type: 'button',
+                    class : 'close',
+                });
+
+                var closebtnspan = lejQuery('<span/>', {
+                });
+
+                closebtnspan.attr('aria-hidden','true');
+                closebtnspan.html(closebtnspan.html() + '&times;');
+
+                closebtn.attr('data-dismiss','alert');
+
+                lejQuery('#messageId').append(notifycontainer.append(closebtn.append(closebtnspan)));
+            }
+        }
+
+        function handleOnComplete(el) {
+
+            // the list itself and the columnModel within it
+            theEnhancedList = el;
+
+            var actionColIndex = theEnhancedList.grid.colModel.getIndexById('ACTION_COLUMN');
+
+            // Rename the Action column header
+            var latticeLabel = '{!JSINHTMLENCODE($Label.MASS_Lattice)}';
+            theEnhancedList.grid.colModel.setColumnHeader(actionColIndex, latticeLabel);
+            theEnhancedList.grid.colModel.setColumnWidth(actionColIndex, Math.max(latticeLabel.length * 7, 40));
+
+            // hide the checkbox column if necessary
+            // theEnhancedList.grid.colModel.setHidden(0, true);
+
+            // delay if the grid is using late rendering so the grid.store has data in it
+            if (theEnhancedList.grid.deferRowRender) {
+                setTimeout(fixListView, 1);
+            } else {
+                fixListView();
+            }
+
+        }
+
+         var hasPageNumSpecified = {!hasPageNumSpecified};
+
+        function buildURL(listRecordId) {
+            return '<a class="chevron glyphicon-sf-view" id="chevron_' + listRecordId + '" onclick="selectNewRecommendation(\'' + listRecordId + '\');"></a>';
+        }
+
+        function fixListView () {
+            if (console) {
+                //console.log('Page No: '+hasPageNumSpecified);
+            }
+
+            if (hasPageNumSpecified) {
+                // Navigate to the required page if it's not the same one we're on now
+                if (lejQuery("[id$='accountPageNumber']").val() != lejQuery('input.pageInput').val()) {
+                    Paginator.instances['thePage:theAccountList_paginator'].goToPage({!accountPageNumber});
+                }
+                hasPageNumSpecified = false;
+            }
+
+            if (theEnhancedList) {
+                theEnhancedList.grid.store.each(function(r) {
+
+                    // get the value from the record id field
+                    var recordId = r.id;
+                    //var accountName = r.get('ACCOUNT.NAME')[1];
+
+                    // create the anchor tag
+                    var newAnchor = buildURL(recordId);
+
+                    // the action column is an array type
+                    r.set('ACTION_COLUMN', [newAnchor]);
+
+                    // clear the dirty flag on the cell
+                    r.commit();
+                });
+
+                  // This copies the current pagenumber over to a VF binding so we can properly build urls
+                lejQuery("[id$='accountPageNumber']").val(lejQuery('input.pageInput').val());
+            }
+
+            if (console) {
+                //console.log('Returning to page:  {!returningToPage}');
+            }
+            if (lejQuery('a.chevron').length > 0) {
+
+                if ({!returningToPage} == false) {
+
+                    lejQuery('a.chevron')[0].click();
+                } else {
+                    lejQuery('a#chevron_{!LEFT(selectedRecommendationId, 15)}').closest('tr').addClass('selectedChevron');
+                }
+            } else {
+                clearLowerSection();
+            }
+
+
+        }
+
+        function clearLowerSection () {
+            lejQuery('section.content-main').hide();
+        }
+
+        // Since the dom is updated each time the account is selected, we need to reattach these
+        // This is called oncomplete from anything that selects an account
+        function attachClickOverridesOnCheckboxes () {
+            // Prevent the click event on the checkbox from firing the parent click event
+            lejQuery('input.checkableSFDCId').click(function( event ) {
+              event.stopPropagation();
+            });
+        }
+
+        // This gathers the Ids, then sends them to the controller through the actionFunction
+        function massDisqualifyRecommendations () {
+            var theSelectedIds = findSelectedRecommendations();
+            if (theSelectedIds.length > 0) {
+                massDisqualifyRecommendationsInApexStepOne(theSelectedIds);
+            } else {
+                alert('At least one selection is required.');
+                return '';
+            }
+        }
+
+        function selectNewRecommendation (thisId) {
+        	lejQuery('#suppInfoContentDiv').hide();
+            lejQuery('section.content-main').show();
+            lejQuery('a.chevron').closest('tr').removeClass('selectedChevron');
+            lejQuery('a#chevron_'+thisId).closest('tr').addClass('selectedChevron');
+            selectNewRecommendationApex(thisId);
+            mixpanelModule.startTabStopwatch();
+        }
+
+        // This gathers the Ids, then sends them to the controller through the actionFunction
+        function massConvertOpportunities () {
+            var theSelectedIds = findSelectedRecommendations();
+            if (theSelectedIds.length > 0) {
+                massConvertOpportunitiesInApexStepOne(theSelectedIds);
+            } else {
+                alert('At least one selection is required.');
+                return '';
+            }
+        }
+
+        // this is used to return to the account when everything is done, but checks for page messages
+        function returnToRecommendationWithCheck () {
+            if (lejQuery('div[class$="messageText"]').length == 0) {
+                returnToRecommendation();
+            } else {
+                attachClickOverridesOnCheckboxes();
+            }
+        }
+
+        function convertSingleOpportunity (theId) {
+            if (console) {
+                console.log('Got this Id:  '+theId);
+            }
+            massConvertOpportunitiesInApexStepOne(theId);
+        }
+
+        function disqualifySingleRecommendation (theId) {
+            if (console) {
+                console.log('Got this Id:  '+theId);
+            }
+            massDisqualifyRecommendationsInApexStepOne(theId);
+        }
+
+        function performOpportunityConvertion(element){
+            updateElementLinkToReturnInConsole(element);
+            doOnComplete();
+        }
+
+        function performNavigation(link, sfRecordId, isNewWindow, isEmbedded, newTabName){
+
+            configureView();
+
+            navigateToTab(link, sfRecordId, isNewWindow, isEmbedded, newTabName);
+
+        }
+
+        function configureView () {
+        	var isSF1 = ForceUI.isSalesforce1();
+
+			if (isSF1) {
+                lejQuery('div[id$="oppPanel"]').remove();
+                lejQuery('.desktop').remove();//This is needed if sometimes oppPanel behaves little weird
+            } else {
+                lejQuery('div[id$="mobileActionPanel"]').remove();
+                lejQuery('div[id$="leadsection"]').remove();
+                lejQuery('.sf1').remove();//This is needed if lead section sometimes behaves weird
+            }
+
+            lejQuery('li[style*="list-style: none"]').remove();
+        }
+
+       function doOnComplete () {
+          attachClickOverridesOnCheckboxes();
+          configureView();
+          makeOpportunityClickable();
+          salesforceMenu();
+          backButton();
+          mobileRevenueHide();
+          tabletSpacing();
+          enableDisableSaveButton(false);
+        }
+
+        function back(){
+
+            var oldURL = document.referrer;
+            var oldURLStringList = oldURL.split("/");
+            var lastChunk = oldURLStringList[oldURLStringList.length-1]
+            var objectprefix = lastChunk.substring(0, 3);
+
+            var cameFromStandardPageOverride = false;
+            if (lastChunk.includes('id=001')
+            	|| lastChunk.includes('id=00Q')
+                || lastChunk.includes('id=003')
+            	|| lastChunk.includes('id=006')) {
+            		cameFromStandardPageOverride = true;
+            }
+            if (console) {
+            	console.log('lastChunk:  '+lastChunk);
+            	console.log('OBJECTPREFIX:  '+objectprefix);
+            	console.log('cameFromStandardPageOverride:  '+cameFromStandardPageOverride);
+            }
+
+            if (objectprefix === undefined){ //If keyprefix is not defined take the use to RecommendationList Page
+                window.location.href='/apex/{!nameSpacePrefix}RecommendationsList?recommendationId={!$CurrentPage.Parameters.id}';
+            } else {
+                if (cameFromStandardPageOverride == true
+                	|| objectprefix == '001'
+                    || objectprefix == '003'
+                	|| objectprefix == '00Q'
+                	|| objectprefix == 'emp'
+                	|| objectprefix == '006') { //when the page comes from Lead or Account or Opportunity Iframe previously use history of browser
+	                    //when the page is opened through top links use browser history.emp denotes it was from empty HTML
+	                    window.history.back();
+                } else {
+                    if (ForceUI.isSalesforce1()) {
+                        var counter = {!backCounter};
+
+                    	//Since I have to go back in time, and I know that I came back to this page "counter" times, I figure how how far back in the history do I have to go
+                    	counter = -1 * ((counter*3)-2 );
+
+                    	console.log('About to go back : ' + counter);
+
+                    	window.history.go(counter);
+
+                        //sforce.one.navigateToURL('/{!$ObjectType.Recommendation__c.keyPrefix}', true);
+                    } else {
+                        window.location.href='/apex/{!nameSpacePrefix}RecommendationsList?recommendationId={!$CurrentPage.Parameters.id}';
+                    }
+                }
+            }
+        }
+
+        function sf1Navigation(param,isredirect){
+            document.getElementsByClassName("open-menu")[0].click();//close the transistion once element is navigating
+            sforce.one.navigateToURL(param,isredirect);
+        }
+
+        function enableDisableSaveButton(value) {
+            var theButton = lejQuery(".confirmButton");
+
+            if (value) {
+                lejQuery(theButton).hide();
+            } else {
+                lejQuery(theButton).show();
+            }
+            //lejQuery(theButton).attr('disabled', value);
+        }
+
+        function viewRecommendation(recommendationId, recommendationName) {
+            var recommendationURL = "/" + recommendationId;
+
+            if (isInSalesConsole) {
+                var tabIconURL = "{!URLFOR($Resource.installAssets, 'img/lattice-app-tab-icon.png')}";
+                openOrActivateInPrimaryConsoleTab(recommendationURL, recommendationId, recommendationName, tabIconURL);
+            } else {
+                window.open(recommendationURL, '_self');
+            }
+        }
+
+        function updateRecommendationTabIcon() {
+            sforce.console.getEnclosingPrimaryTabId(function onComplete(result) {
+                sforce.console.setTabIcon("{!URLFOR($Resource.installAssets, 'img/lattice-app-tab-icon.png')}", result.id);
+            });
+        }
+
+        function setupConsoleModeIfNeeded() {
+            setIsInSalesConsole(isInSalesConsole);
+
+            if (isInSalesConsole) {
+                lejQuery("#back-button").hide();
+
+                if ({!isEmbeddedInRecommendation}) {
+                    updateRecommendationTabIcon();
+                }
+
+
+            } else {
+                lejQuery("#back-button").show();
+            }
+        }
+
+        function mixPanelShouldTrackActionCallback(itemId) {
+            if (itemId == 'converToOppButton' ||
+                itemId == 'linkToOppButton' ||
+                itemId == 'disqualifyButtton' ||
+                itemId == 'emailButton' ||
+                itemId == 'logButton' ||
+                itemId == 'taskButton' ||
+                itemId == 'meetingButton' ||
+                itemId == 'eventButton') {
+                    return lejQuery("[id$='convertDisabled']").text().toLowerCase() == 'false';
+            }
+
+            return true;
+        }
+
+    </script>
+
+    <!-- This shows up when they don't have permissions -->
+	<apex:outputpanel layout="none" rendered="{!!hasPermissionRequired}" >
+		<apex:pageMessages id="noPermissionPageMessages" />
+	</apex:outputpanel>
+
+  <!-- This only renders when they DO have access. -->
+	<apex:outputpanel layout="none" rendered="{!hasPermissionRequired}" >
+
+    <apex:enhancedList type="Recommendation__c" id="theAccountList" height="360" rendered="{!showRecommendationList}" oncomplete="handleOnComplete(this);" />
+
+    <section class="content-main" id="bootstrap-lattice">
+        <apex:form id="theForm">
+
+            <apex:actionFunction name="setIsInSalesConsole" rerender="consoleModeMessage" oncomplete="adjustContainerWidth();">
+                <apex:param name="param" value="" assignTo="{!isInConsoleMode}" />
+            </apex:actionFunction>
+
+            <!--Display this one in case an error prevents the standard one from showing-->
+            <!-- <apex:pageMessages rendered="{!!showRecommendationSection}"/> -->
+
+            <apex:inputHidden value="{!accountPageNumber}" id="accountPageNumber" />
+
+            <apex:outputText value="{!convertDisabled}" id="convertDisabled" style="display:none" />
+
+            <apex:outputPanel id="recommendationDetailPanel" layout="block" styleClass="lattice-details" rendered="{!showRecommendationSection}" >
+
+                <!--This section displays the Disqualification Reason for Disqualified  Recommendations
+            <apex:outputPanel layout="block" styleClass="row" rendered="{!isRecommendationDisqualified}">
+              <div class="col-md-12">
+                <p class="disqualification-reason">
+                 <em>Disqualification Reason:</em>
+                 <apex:outputField value="{!selectedRecommendation.LBI__DisqualificationReason__c}"/>
+                </p>
+              </div>
+            </apex:outputPanel>
+            -->
+                <div class="container-fluid">
+
+                    <apex:outputPanel styleClass="row" rendered="{!!isEmbeddedInLightning}" id="mainDetailHeader">
+                        <apex:outputPanel layout="none" rendered="{!isEmbeddedInRecommendation && !isInConsoleMode}">
+                            <div id="back-button">
+                                <a class="btn btn-default back" title="Back" onClick="back();">
+                                <span class="glyphicon-sf-pagination-back"></span>{!$Label.MASS_back}</a>
+                            </div>
+                        </apex:outputPanel>
+
+                        <div id="salesforce-menu">
+                            <div class="col-md-11">
+
+                            <div class="actions-toggle pull-right">
+
+                                <div id="openmenu">
+                                    <label class="open-menu" for="menu-toggle" onclick="toggleClass(this,'close-menu', 500, 'easeOut');">Actions</label>
+                                </div>
+                                <input type="checkbox" id="menu-toggle"/>
+                                <ul id="menu">
+                                    <!--DESKTOP ACIONS-->
+                                    <apex:outputPanel id="oppPanel" layout="none" >
+                                        <apex:outputPanel id="oppPanelInner" layout="none" >
+                                            <!--Convert to Opportunity -->
+                                            <apex:outputPanel layout="none" rendered="{!showConvertOppButton}">
+	                                            <li class="desktop" id="converToOppButton">
+
+	                                                <apex:outputLink styleClass="convert-opp disabled" value="#" rendered="{!convertDisabled}" >Convert to Opp </apex:outputLink>
+
+	                                                <apex:outputPanel layout="none" rendered="{! !convertDisabled}">
+
+	                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+	                                                        <apex:commandLink action="{!convertOpportunitiesStepOneReturnToRecommendation}" styleClass="convert-opp" reRender="theForm" rendered="{!!convertDisabled}" oncomplete="performOpportunityConvertion(this);">
+	                                                            <apex:param name="selectedRecommendationId" assignTo="{!selectedRecommendationId}" value="{!selectedRecommendation.Id}" />{!$Label.lbi__rep_convert_opportunity}
+	                                                        </apex:commandLink>
+	                                                    </apex:outputPanel>
+
+
+	                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead' && showConvertOppButtonLeadBased,'true','false')}">
+
+	                                                        <apex:commandLink styleclass="convert-opp" action="{!convertLead}" rendered="{!!convertDisabled}" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');">{!$Label.lbi__rep_convert_to_lead}</apex:commandLink>
+
+	                                                    </apex:outputPanel>
+
+	                                                </apex:outputPanel>
+
+	                                            </li>
+                                            </apex:outputPanel>
+
+                                            <!--Link to Existing Opportunity -->
+											<apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation' && showLinkToOppButton}">
+	                                            <li class="desktop" id="linkToOppButton">
+                                                    <apex:commandLink action="{!linkToExistingOpportunityStepOne}" styleClass="link-existing" rerender="theForm" oncomplete="doOnComplete();" rendered="{!!convertDisabled}">
+                                                        <apex:param name="selectedRecommendationId" assignTo="{!selectedRecommendationId}" value="{!selectedRecommendationId}" />Link to Opp
+                                                    </apex:commandLink>
+                                                    <apex:outputLink styleClass="link-existing disabled" value="#" rendered="{!convertDisabled}">{!$Label.lbi__rep_link_to_existing_opportunity}</apex:outputLink>
+	                                            </li>
+                                            </apex:outputPanel>
+
+                                            <!--Disqualify -->
+											<apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation' && showDisqualifyButton}">
+	                                            <li class="desktop" id="disqualifyButtton">
+                                                    <apex:commandLink action="{!disqualifyRecommendationsStepOneReturnToRecommendation}" styleClass="disqualify" rerender="theForm" oncomplete="doOnComplete();" rendered="{!!convertDisabled}"> Disqualify </apex:commandLink>
+                                                    <apex:outputLink styleClass="disqualify disabled" value="#" rendered="{!convertDisabled}" >{!$Label.lbi__rep_disqualify}</apex:outputLink>
+	                                            </li>
+                                            </apex:outputPanel>
+
+                                            <!--Send Email -->
+
+                                            <apex:outputPanel layout="none" rendered="{!showEmailAction || showLeadEmailAction}">
+
+                                            <li class="desktop" id="emailButton">
+
+                                                <!--The two panels are nested for clarity of code-->
+												<apex:outputPanel layout="none" rendered="{! convertDisabled}" >
+													<apex:outputPanel layout="none" rendered="{! (showEmailAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Recommendation') || (showLeadEmailAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Lead')}" >
+														<apex:outputLink value="#" styleClass="email disabled">{!$Label.lbi__ais_sendemail}</apex:outputLink>
+													</apex:outputPanel>
+												</apex:outputPanel>
+
+                                                <apex:outputPanel layout="none" rendered="{! !convertDisabled}">
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{! !isEmbeddedInRecommendation}" >
+                                                            <span id="emailButton">
+                                                                <apex:commandLink action="{!sendEmailToRecommendation}" styleClass="email" rendered="{!showEmailAction && selectedRecommendation.LBI__LastEmailDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_sendemail} </apex:commandLink>
+                                                                <apex:commandLink action="{!sendEmailToRecommendation}" styleClass="email taken" rendered="{!showEmailAction && selectedRecommendation.LBI__LastEmailDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_sendemail} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="emailButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!RecommendationEmailLink}');" value="{!RecommendationEmailLink}" styleClass="email" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__ais_sendemail}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="emailButton">
+                                                                <apex:commandLink action="{!sendEmailToLead}" styleClass="email" rendered="{!showLeadEmailAction && selectedRecommendation.LBI__LastEmailDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_sendemail} </apex:commandLink>
+                                                                <apex:commandLink action="{!sendEmailToLead}" styleClass="email taken" rendered="{!showLeadEmailAction && selectedRecommendation.LBI__LastEmailDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_sendemail} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="emailButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!SendEmailToLeadLink}');" value="{!SendEmailToLeadLink}" styleClass="email" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__ais_sendemail}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                            </li>
+
+                                        </apex:outputPanel>
+
+                                            <!--Call -->
+
+                                            <apex:outputPanel layout="none" rendered="{!showCallAction || showLeadCallAction}">
+
+                                            <li class="desktop" id="logButton">
+                                                <!--The two panels are nested for clarity of code-->
+												<apex:outputPanel layout="none" rendered="{! convertDisabled}" >
+													<apex:outputPanel layout="none" rendered="{! (showCallAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Recommendation') || (showLeadCallAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Lead')}" >
+														<apex:outputLink value="#" styleClass="call disabled">{!$Label.lbi__rep_call_new}</apex:outputLink>
+													</apex:outputPanel>
+												</apex:outputPanel>
+
+                                                <apex:outputPanel layout="none" rendered="{! !convertDisabled}" >
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowCallAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="logButton">
+                                                                <apex:commandLink action="{!callRecommendation}" styleClass="call" rendered="{!showCallAction && selectedRecommendation.LBI__LastCallDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_call_new} </apex:commandLink>
+                                                                <apex:commandLink action="{!callRecommendation}" styleClass="call taken" rendered="{!showCallAction && selectedRecommendation.LBI__LastCallDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_call_new} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="logButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!CallRecommendationLink}');" value="{!CallRecommendationLink}" styleClass="call" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__rep_call_new}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowCallAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="logButton">
+                                                                <apex:commandLink action="{!callLead}" styleClass="call" rendered="{!showLeadCallAction && selectedRecommendation.LBI__LastCallDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_call_new} </apex:commandLink>
+                                                                <apex:commandLink action="{!callLead}" styleClass="call taken" rendered="{!showLeadCallAction && selectedRecommendation.LBI__LastCallDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_call_new} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="logButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!CallLeadLink}');" value="{!CallLeadLink}" styleClass="call" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__rep_call_new}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                            </li>
+
+                                        </apex:outputPanel>
+
+                                            <!--New Task -->
+
+                                            <apex:outputPanel layout="none" rendered="{!showTaskAction || showLeadTaskAction}">
+
+                                            <li class="desktop" id="taskButton">
+
+												<!--The two panels are nested for clarity of code-->
+												<apex:outputPanel layout="none" rendered="{! convertDisabled}" >
+													<apex:outputPanel layout="none" rendered="{! (showTaskAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Recommendation') || (showLeadTaskAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Lead')}" >
+														<apex:outputLink value="#" styleClass="task disabled">{!$Label.lbi__ais_newtask}</apex:outputLink>
+													</apex:outputPanel>
+												</apex:outputPanel>
+
+                                                <apex:outputPanel layout="none" rendered="{! !convertDisabled}" >
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="taskButton">
+                                                                <apex:commandLink action="{!logTaskRecommendation}" styleClass="task" rendered="{!showTaskAction && selectedRecommendation.LBI__LastTaskDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_newtask} </apex:commandLink>
+                                                                <apex:commandLink action="{!logTaskRecommendation}" styleClass="task taken" rendered="{!showTaskAction && selectedRecommendation.LBI__LastTaskDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_newtask} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="taskButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!LogTaskRecommendationLink}');" value="{!LogTaskRecommendationLink}" styleClass="task" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__ais_newtask}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="taskButton">
+                                                                <apex:commandLink action="{!logTaskLead}" styleClass="task" rendered="{!showLeadTaskAction && selectedRecommendation.LBI__LastTaskDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__ais_newtask} </apex:commandLink>
+                                                                <apex:commandLink action="{!logTaskLead}" styleClass="task taken" rendered="{!showLeadTaskAction && selectedRecommendation.LBI__LastTaskDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');">{!$Label.lbi__ais_newtask} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="taskButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!LogTaskLeadLink}');" value="{!LogTaskLeadLink}" styleClass="task" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__ais_newtask}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                            </li>
+
+                                        </apex:outputPanel>
+
+                                            <!--New Meeting -->
+
+
+                                            <apex:outputPanel layout="none" rendered="{!showEventAction || showLeadEventAction}">
+                                            <li class="desktop" id="meetingButton">
+
+												<!--The two panels are nested for clarity of code-->
+												<apex:outputPanel layout="none" rendered="{! convertDisabled}" >
+													<apex:outputPanel layout="none" rendered="{! (showEventAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Recommendation') || (showLeadEventAction && selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.Type__c=='Lead')}" >
+														<apex:outputLink value="#" styleClass="event disabled">{!$Label.lbi__rep_set_up_meeting_new}</apex:outputLink>
+													</apex:outputPanel>
+												</apex:outputPanel>
+
+                                                <apex:outputPanel layout="none" rendered="{! !convertDisabled}" >
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEventAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="meetingButton">
+                                                                <apex:commandLink action="{!scheduleEventRecommendation}" styleClass="event" rendered="{!showEventAction && selectedRecommendation.LBI__LastEventDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_set_up_meeting_new} </apex:commandLink>
+                                                                <apex:commandLink action="{!scheduleEventRecommendation}" styleClass="event taken" rendered="{!showEventAction && selectedRecommendation.LBI__LastEventDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_set_up_meeting_new} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEventAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="meetingButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!ScheduleEventRecommendationLink}');" value="{!ScheduleEventRecommendationLink}" styleClass="task" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__rep_set_up_meeting_new}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEventAction__c && !isEmbeddedInRecommendation}" >
+                                                            <span id="meetingButton">
+                                                                <apex:commandLink action="{!scheduleEventLead}" styleClass="event" rendered="{!showLeadEventAction && selectedRecommendation.LBI__LastEventDatetime__c == null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_set_up_meeting_new} </apex:commandLink>
+                                                                <apex:commandLink action="{!scheduleEventLead}" styleClass="event taken" rendered="{!showLeadEventAction && selectedRecommendation.LBI__LastEventDatetime__c != null}" rerender="theForm" onComplete="performNavigation('{!redirectUrl}', '{!selectedRecommendationId}', false, '{!isEmbeddedInRecommendation}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');"> {!$Label.lbi__rep_set_up_meeting_new} </apex:commandLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEventAction__c && isEmbeddedInRecommendation}" >
+                                                            <span id="meetingButton">
+                                                                <apex:outputLink onClick="return updateElementLinkToReturnInConsole(this, '{!ScheduleEventLeadLink}');" value="{!ScheduleEventLeadLink}" styleClass="task" target="{!actionLinkTarget}">
+                                                                    {!$Label.lbi__rep_set_up_meeting_new}
+                                                                </apex:outputLink>
+                                                            </span>
+                                                        </apex:outputPanel>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                            </li>
+                                        </apex:outputPanel>
+                                        </apex:outputPanel>
+                                    </apex:outputPanel>
+
+                                    <!--MOBILE ACIONS-->
+                                    <apex:outputPanel id="mobileActionPanel" layout="none">
+                                        <apex:outputPanel id="mobileActionPanelInner" layout="none" rendered="{! !convertDisabled}">
+                                            <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}" id="recPanel">
+                                                <apex:outputPanel layout="none" rendered="{!!convertDisabled}">
+                                                <apex:outputPanel layout="none" rendered="{!showConvertOppButton}">
+                                                    <li class="sf1">
+                                                        <a class="convert-opp" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationConvert}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">
+                                {!$Label.lbi__rep_convert_opportunity}
+                                                        </a>
+                                                    </li>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!showLinkToOppButton}">
+                                                    <li class="sf1">
+                                                        <a class="link-existing" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationOpportunityLink}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">
+                                {!$Label.lbi__rep_link_to_existing_opportunity}
+                                                        </a>
+                                                    </li>
+                                                </apex:outputPanel>
+                                              	<apex:outputPanel layout="none" rendered="{!showDisqualifyButton}">
+                                                    <li class="sf1">
+                                                        <a class="disqualify" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationDisqualify}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">
+                                {!$Label.lbi__rep_disqualify}
+                                                        </a>
+                                                    </li>
+                                                </apex:outputPanel>
+                                                </apex:outputPanel>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead'}" id="leadPanel2">
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead' && showConvertOppButtonLeadBased,'true','false')}" id="leadPanel">
+                                                <apex:outputPanel layout="none" rendered="{!!convertDisabled}">
+                                                    <li class="sf1">
+                                                        <a class="convert-opp" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationLeadConvert}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">
+                                {!$Label.lbi__rep_convert_to_lead}
+                                                        </a>
+                                                    </li>
+                                                </apex:outputPanel>
+                                            </apex:outputPanel>
+
+                                            <!--Mobile Send Email -->
+                                            <apex:outputPanel layout="none" id="leadsection">
+
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c}" >
+                                                        <li class="sf1"><a class="email" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationSendEmail}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">Email</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEmailAction__c}" >
+                                                        <li class="sf1"><a class="email" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationSendEmail}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">Email</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+
+                                                <!--Mobile New Call -->
+
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c}" >
+                                                        <li class="sf1"><a class="call" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationLogCall}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">Call</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c}" >
+                                                        <li class="sf1"><a class="call" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationLogCall}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">Call</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+
+                                                <!-- Mobile New Task-->
+
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c}" >
+                                                        <li class="sf1"><a class="task" onclick="sf1Navigation('{!$Page.MobileRecommendationNewTask}?id={!Recommendation__c.Id}&backCounter={!backCounter}',false);" href="#">New Task</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowTaskAction__c}" >
+                                                        <li class="sf1"><a class="task" onclick="sf1Navigation('{!$Page.MobileRecommendationNewTask}?id={!Recommendation__c.Id}&backCounter={!backCounter}',false);" href="#">New Task</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+
+                                                <!-- Mobile New Event-->
+
+                                                <!--New Meeting -->
+
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEventAction__c}" >
+                                                        <li class="sf1"><a class="event" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationNewEvent}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">{!$Label.lbi__rep_set_up_meeting_new}</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+                                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__ShowEventAction__c}" >
+                                                        <li class="sf1"><a class="event" href="#" onclick="sf1Navigation('{!$Page.LBI__MobileRecommendationNewEvent}?id={!LBI__Recommendation__c.Id}&backCounter={!backCounter}',false);">{!$Label.lbi__rep_set_up_meeting_new}</a></li>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+                                                    <li class="sf1"><a class="salesprism" href="#" onClick="return openSalesPrismURL('{!PrismURL}');">{!$Label.lbi__rep_sales_prism}</a></li>
+                                                </apex:outputPanel>
+
+                                            </apex:outputPanel>
+                                        </apex:outputPanel>
+                                    </apex:outputPanel>
+
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    </apex:outputPanel>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+                                <a class="prism pull-right desktop" href="#" onClick="return openSalesPrismURL('{!PrismURL}');">{!$Label.lbi__rep_sales_prism}</a>
+                            </apex:outputPanel>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <apex:pageMessages id="RecPageMessages" />
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="messageId"></div>
+                            <apex:outputPanel styleClass="rec-details-container" rendered="{!!isEmbeddedInLightning}">
+                                <h3 title="{!selectedRecommendation.LBI__DisplayName__c}" class="rec-display-name">
+                                    <span class="icon rec-title glyphicon-sf-{!selectedRecommendation.PlayTypeNameClass__c}"></span>
+                                    <apex:outputField value="{!selectedRecommendation.LBI__DisplayName__c}" />
+                                </h3>
+
+                                <div class="account-details">
+                                    <p class="description">{!selectedRecommendation.Description__c}</p>
+                                    <!-- Hiding created date just in case
+                                    <span class="highlights first">
+                      				{!$Label.REP_Created_Date}&nbsp;
+                                        <em class="created">
+                                            <c:FormattedDateTime datetimeValue="{!selectedRecommendation.CreatedDate}" datetimeFormat="MM/dd/yyyy" />
+                                        </em>
+                                    </span>
+                                    -->
+                                <ul class="highlights">
+                                    <apex:outputPanel layout="none" rendered="{!showRevenue}">
+                                    <li id="revenue-hide">
+                                        {!$Label.REP_Estimated_Revenue}&nbsp;<em class="revenue"><apex:outputField value="{!selectedRecommendation.LBI__MonetaryValue__c}" /></em>
+                                    </li>
+                                    </apex:outputPanel>
+
+                                    <li>Days Active
+                                        <em class="created">
+                                            {!selectedRecommendation.AgeInDays__c}
+                                        </em>
+                                    </li>
+
+                                    <li>{!$Label.REP_Status}&nbsp;<em class="created"><apex:outputField value="{!selectedRecommendation.LBI__Status__c}" /></em>
+                                    </li>
+                                </ul>
+
+                                    <div class="rating-rank">
+                                        <apex:outputPanel layout="inline" rendered="{!!showScore}" id="noScoreTab">
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'A'}" >
+                                                <div class="progress-radial progress-100">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'B'}" >
+                                                <div class="progress-radial progress-75">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'C'}" >
+                                                <div class="progress-radial progress-50">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'D'}" >
+                                                <div class="progress-radial progress-25">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGHEST'}" >
+                                                <div class="progress-radial progress-100">
+                                                    <div class="overlay condensed"><apex:outputText value="HIGHEST" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGH'}" >
+                                                <div class="progress-radial progress-75">
+                                                    <div class="overlay condensed"><apex:outputText value="HIGH" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'MEDIUM'}" >
+                                                <div class="progress-radial progress-50">
+                                                    <div class="overlay condensed"><apex:outputText value="MEDIUM" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'LOW'}" >
+                                                <div class="progress-radial progress-25">
+                                                    <div class="overlay condensed"><apex:outputText value="LOW" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+
+                                        </apex:outputPanel>
+
+                                        <apex:outputPanel layout="inline" rendered="{!showScore}" id="scoreTab">
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'A'}" >
+                                                <div class="progress-radial progress-100">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'B'}" >
+                                                <div class="progress-radial progress-75">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'C'}" >
+                                                <div class="progress-radial progress-50">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'D'}" >
+                                                <div class="progress-radial progress-25">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGHEST'}" >
+                                                <div class="progress-radial progress-100">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGH'}" >
+                                                <div class="progress-radial progress-75">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'MEDIUM'}" >
+                                                <div class="progress-radial progress-50">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'LOW'}" >
+                                                <div class="progress-radial progress-25">
+                                                    <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                                </div>
+                                            </apex:outputPanel>
+
+                                        </apex:outputPanel>
+
+                                    </div>
+
+                                </div>
+
+                            </apex:outputPanel>
+
+                        </div>
+
+                </div>
+
+                <!--<div class="col-md-4">
+
+                <apex:outputPanel layout="none" rendered="{!NOT(isRecommendationDisqualified)}">
+
+                    <apex:outputPanel layout="none" rendered="{!IF(selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+                    <a onClick="deleteRecommendation('{!selectedRecommendationId}');">
+                        <span class="icon-disqualify" />Delete
+                    </a>
+                </apex:outputPanel></li>
+
+                    <ul class="actions pull-right">SEND EMAIL
+                        <li data-toggle="tooltip" title="{!$Label.lbi__ais_sendemail}"></li>
+                        CALL ACTION
+                        <li data-toggle="tooltip" title="{!$Label.lbi__rep_call_new}">
+                        NEW MEETING ACTION
+                        <li data-toggle="tooltip" title="{!$Label.lbi__ais_newtask}"></li>
+                        NEW EVENT
+                        <li data-toggle="tooltip" title="{!$Label.lbi__rep_set_up_meeting_new}"></li>
+                    </ul>
+
+                    <ul class="actions pull-right">
+                        <li>
+                          <apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+                            <a class="prism-block" href="{!PrismURL}"></a>
+                          </apex:outputPanel>
+                        </li>
+                        <li data-toggle="tooltip" title="Convert Opportunity"></li>
+                        <li data-toggle="tooltip" title="Link to Existing Opportunity"></li>
+                        <li data-toggle="tooltip" title="Disqualify"></li>
+                    </ul>
+
+                    </apex:outputPanel>
+
+                    This section is displayed for the Disqualified Recommendations
+                    <apex:outputPanel layout="none" rendered="{!isRecommendationDisqualified}">
+                        <ul class="actions pull-right">
+                            <li><a href="#" class="convert-opp disabled"></a></li>
+                            <li><a href="#" class="disqualify disabled"></a></li>
+                            <li><apex:outputLink value="#" rendered="{!showTaskAction}" styleclass="call disabled"></apex:outputLink></li>
+                            <li><apex:outputLink value="#" rendered="{!showEventAction}" styleclass="event disabled"></apex:outputLink></li>
+                        </ul>
+                    </apex:outputPanel>
+                </div>-->
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <c:TabMenuComponent id="tabMenuComponentInRec"
+                            showBuyingSignals="{!showBuyingSignals}"
+                            showTalkingPoints="true"
+                            showPurchaseHistory="{!showPurchaseHistory}"
+                            showCompanyProfile="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}"
+                            isSuppInfoEnabled="{!isSuppInfoEnabled}"
+                            isAtRecLevel="false"
+                            recommendationPlayId="{!selectedRecommendation.LBI__Play__c}" />
+                    </div>
+
+                    <div style="display:none;" id="acctExtDebugInfo">
+                    	selectedRecommendation.AccountExtension__c:  {!selectedRecommendation.LBI__AccountExtension__c}<br/>
+                    	areAccountExtensionsEnabled: {!areAccountExtensionsEnabled}
+                    </div>
+
+                    <apex:outputPanel layout="none" rendered="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}">
+						<apex:outputPanel id="companyProfileTabContents" layout="block" styleClass="company-profile-holder" style="display:none;">
+							<c:CompanyProfileOutput id="companyProfileOutput" parentAcctExtId="{!selectedRecommendation.LBI__AccountExtension__c}" />
+						</apex:outputPanel>
+					</apex:outputPanel>
+
+    				<apex:outputPanel layout="none" rendered="{!isSuppInfoEnabled}">
+                <apex:outputPanel id="suppInfoTable" layout="block" styleClass="suppInfoHolder loading-small" style="display:none;" >
+                    <apex:actionStatus id="loadingStatus">
+                        <apex:facet name="start">
+                            <apex:outputText value="{!$Label.lbi__lab_loading}" />
+                        </apex:facet>
+                        <apex:facet name="stop">
+                            <c:SupplementalInfoList id="supplementalInfoList" parentAcctId="{!selectedRecommendation.LBI__Account__c}" isSF1Boolean="{!isSF1}" isInConsoleBoolean="{!isInConsoleMode}" supplementalInfoRecord="{!selectedSupplementalInfo}" />
+                        </apex:facet>
+					</apex:actionStatus>
+                </apex:outputPanel>
+            </apex:outputPanel>
+
+            <apex:outputPanel id="iFrameHolder" layout="block" styleClass="col-md-12 iFrameHolder" >
+                <iframe src="{!IFrameSource}" scrolling="no" id="theIFrame" html-iframeselector="iframeselector" width="100%" height="140px" />
+            </apex:outputPanel>
+
+        </div>
+
+    </div>
+
+</apex:outputPanel>
+
+            <!--Convert to Opportunity Section -->
+
+            <apex:outputPanel id="oppHolder" rendered="{!showOppSection}" layout="block" styleClass="lattice-details">
+
+                <div class="row wrapper">
+                        <div class="col-md-12">
+                            <h3>{!$Label.lbi__rep_new_opportunity}</h3>
+                        </div>
+
+                        <div class="col-md-12">
+                            <apex:pageMessages id="oppPageMessages" />
+                        </div>
+
+
+                          <!-- COD-1088:  Yes, this is funky.  This ensures lookup filters that depend on Account work. -->
+		                  <div style="display:none;">
+		                  	<apex:inputField styleClass="form-control" value="{!newOpp.AccountId}" />
+		                  </div>
+
+
+                            <apex:repeat value="{!oppFields}" var="oppFieldName" >
+
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <apex:outputLabel value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" />
+                                        <apex:inputField styleClass="form-control" value="{!newOpp[oppFieldName]}" />
+                                    </div>
+                                </div>
+
+                            </apex:repeat>
+
+                        <div class="col-md-12">
+                            <br /><br />
+                            <apex:commandLink id="newOppCancelButton" styleClass="popup-modal-dismiss btn btn-default pull-left" action="{!cancelConvertOpportunity}" rerender="theForm" oncomplete="doOnComplete();" immediate="true" >{!$Label.lbi__lab_cancel}</apex:commandLink>
+                            <apex:commandLink styleClass="btn btn-success pull-right confirmButton" action="{!convertOpportunitiesStepTwoReturnToRecommendation}" rerender="theForm" onclick="enableDisableSaveButton(true);" id="convertConfirm" oncomplete="doOnComplete();">{!$Label.lbi__rep_save_opportunity}</apex:commandLink>
+                        </div>
+                </div>
+
+            </apex:outputPanel>
+
+            <!-- End of Convert to Opportunity -->
+
+            <!-- Start of Disqualify Section -->
+            <apex:outputPanel id="recommendationEdit" layout="block" rendered="{!showDisqualifySection}" styleClass="lattice-details">
+
+                <div class="row wrapper">
+
+                    <div class="col-md-12">
+                        <h2>{!$Label.lbi__rep_disqualify_recommendation}</h2>
+                         <apex:pageMessages id="recomDisq2PageMessages"/>
+                    </div>
+
+                    <div class="col-md-6">
+                        <apex:outputLabel value="{!$ObjectType.LBI__Recommendation__c.fields.LBI__DisqualificationReason__c.label}" />
+                        <apex:selectList styleClass="form-control" value="{!selectedDisqualifyReason}" multiselect="false" size="1" onChange="checkDisplayDisqualifyReason();">
+                            <apex:selectOptions value="{!disqualificationReasons}"/>
+                        </apex:selectList>
+                        <br /><br />
+                    </div>
+                    <apex:outputPanel styleClass="col-md-6 {!IF(otherDisqualifyReasonOptional,'','required-disqualify')}" rendered="{!showOtherDisqualifyReason}" id="disqReasonPanel">
+                        <apex:outputLabel value="{!$Label.lbi__dr_enterinfo}" />
+                        <apex:inputField styleClass="form-control" id="disqualificationReasonDetails" value="{!selectedRecommendation.LBI__DisqualificationReason__c}" required="false" />
+                    </apex:outputPanel>
+                    <div class="col-md-12 center-block">
+                        <br /><br />
+                        <a id="disqualificationCancelButton" class="popup-modal-dismiss btn btn-default"  onClick="cancelConvertOpportunity();">{!$Label.lbi__lab_cancel}</a>
+                        <apex:commandLink styleClass="btn btn-danger confirmButton" action="{!disqualifyRecommendationsStepTwoReturnToRecommendation}" onclick="enableDisableSaveButton(true);" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_disqualify}</apex:commandLink>
+                    </div>
+
+                </div>
+
+            </apex:outputPanel>
+
+            <!--END OF DISQUALIFY SECTION -->
+
+            <!-- START LINK TO EXISITING OPPORTUNITY SECTION -->
+
+            <apex:outputPanel id="recommendationlink" layout="block" rendered="{!showlinkToExistingOpportunitySection}" styleClass="lattice-details">
+
+                <div class="row wrapper">
+
+                    <div class="col-md-12">
+                        <apex:pageMessages id="recom3PageMessages"/>
+                    </div>
+
+                    <div class="col-md-12">
+                        <h2>{!$Label.lbi__rep_link_to_existing_opportunity}</h2>
+                    </div>
+
+                    <div class="col-md-12">
+                        <apex:pageMessage summary="No opportunities can be linked" severity="error" strength="3" rendered="{!!showOpportunitylookup}"/>
+                    </div>
+
+                    <div class="col-md-12">
+                        <apex:inputField styleClass="form-control" value="{!selectedRecommendation[appSettings.recomOppRelationshipFieldName]}" rendered="{!showOpportunitylookup}" required="true"/>
+                    </div>
+
+                    <div class="col-md-12 center-block">
+                        <br /><br />
+                        <a id="linkToOpportunityCancelButton" class="popup-modal-dismiss btn btn-default" onClick="cancelConvertOpportunity();">{!$Label.lbi__lab_cancel}</a>
+                        <apex:commandLink styleClass="btn btn-danger confirmButton" action="{!linkToExistingOpportunitiesStepTwoReturnToRecommendation}" rendered="{!showOpportunitylookup}" onclick="enableDisableSaveButton(true);" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_link_to_existing_opportunity}</apex:commandLink>
+                    </div>
+
+                </div>
+
+            </apex:outputPanel>
+
+            <!-- END EXISITING OPPORTUNITY SECTION -->
+
+
+            <apex:actionFunction action="{!cancelConvertOpportunity}" name="cancelConvertOpportunity" rerender="theForm" immediate="true" onComplete="doOnComplete();"/>
+
+            <apex:actionFunction action="{!selectRecommendationInApex}" name="selectNewRecommendationApex" reRender="theForm" onComplete="doOnComplete();" >
+                <apex:param name="selectedRecommendationId" assignTo="{!selectedRecommendationId}" value="" />
+            </apex:actionFunction>
+
+            <apex:actionFunction action="{!returnToRecommendation}" name="returnToRecommendation" reRender="iFrameHolder, theForm" onComplete="doOnComplete();" immediate="true" />
+
+            <apex:actionFunction action="{!checkDisplayDisqualifyReason}" name="checkDisplayDisqualifyReason" reRender="recommendationEdit"/>
+
+            <apex:actionFunction action="{!returnToRecommendationList}" name="returnToRecommendationList" />
+
+            <apex:actionFunction action="{!setSF1Flag}" name="sf1Detection" reRender="oppPanel, mobileActionPanel, suppInfoTable, companyProfileTabContents">
+                <apex:param name="sF1Flag" assignTo="{!isSF1}" value="" />
+            </apex:actionFunction>
+
+            <!-- <apex:actionFunction action="{!selectSuppInfo}" name="selectSuppInfoApex" rerender="supplementalInfoList" onComplete="lejQuery('label.open-menu2').click();"> -->
+            <apex:actionFunction status="loadingStatus" action="{!selectSuppInfo}" name="selectSuppInfoApex" rerender="supplementalInfoList" oncomplete="adjustContainerWidth();">
+                <apex:param name="selectedSuppInfoId" assignTo="{!selectedSuppInfoId}" value="" />
+            </apex:actionFunction>
+
+            <apex:actionFunction status="loadingStatusRec" action="{!selectSuppInfo}" name="selectSuppInfoApexRec" rerender="supplementalInfoList" oncomplete="adjustContainerWidth();">
+                <apex:param name="selectedSuppInfoId" assignTo="{!selectedSuppInfoId}" value="" />
+            </apex:actionFunction>
+
+        <script type="text/javascript">
+            mixpanelModule.assingMPEvents();
+        </script>
+
+        </apex:form>
+
+    </section>
+
+    </apex:outputpanel>
+</apex:page>

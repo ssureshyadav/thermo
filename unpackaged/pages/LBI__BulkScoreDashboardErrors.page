@@ -1,0 +1,151 @@
+<apex:page sidebar="{!showSidebar}"
+		controller="LBI.BulkScoreDashboardErrorsController"
+		readOnly="true"
+		action="{!onLoad}"
+		tabStyle="Lattice_Admin__tab">
+
+<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}" />
+
+<apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+
+<script type="text/javascript">
+
+    function setFocusOnLoad() {}
+
+    $(document).ready(function() {
+
+    });
+
+</script>
+
+<apex:form id="theForm" >
+
+
+<div id="lattice-admin">
+
+	<div class="container-fluid sync-dashboard">
+        <div class="row advanced-admin-title">
+            <div class="col-md-12">
+                <a class="back-to-advanced-admin" href="/apex/BulkScoreDashboard">{!$Label.lbi__bsde_backtobulkscoredashboard}</a>
+                <h1>
+                	<apex:outputText value="{!$Label.lbi__bsde_errorsformodel}">
+                		<apex:param value="{!selectedRequest.LatticeScoringRule__r.Model__r.LBI__ModelName__c}" />
+                	</apex:outputText>
+                </h1>
+            </div>
+        </div>
+
+		<apex:pageMessages id="messages"/>
+
+        <apex:outputPanel layout="block" styleClass="row" id="table">
+            <table class="table">
+            <thead>
+                <tr>
+                    <th><apex:outputText value="{!$ObjectType.LBI__ScoringQueue__c.fields.LBI__ErrorMessage__c.label}" /></th>
+                    <th><apex:outputText value="{!$Label.lbi__sde_numberoferrors}" /></th>
+                </tr>
+                <tbody>
+
+    				<apex:repeat value="{!errorSummaries}" var="errorSummary">
+    					<tr>
+    	                    <td><apex:outputText value="{!errorSummary.message}" /></td>
+    	                    <td><apex:outputText value="{0, number, 0}">
+    	                    		<apex:param value="{!errorSummary.errorCount}" />
+    	                    	</apex:outputText>&nbsp;
+            					<apex:commandLink action="{!viewErrorDetails}" value="View Details" reRender="errorDetails, pageInfo, messages">
+            						<apex:param value="{!errorSummary.message}" name="stepid" assignTo="{!selectedMessage}" />
+            					</apex:commandLink>
+    	                    </td>
+
+                    	</tr>
+
+    				</apex:repeat>
+
+                </tbody>
+            </thead>
+    	    </table>
+        </apex:outputPanel>
+
+	    <apex:outputPanel layout="none" id="errorDetails">
+		    <apex:outputPanel layout="block" styleClass="row" rendered="{!showErrorDetails}">
+			<table class="table table-striped nested-sync-table">
+				<thead>
+				    <tr>
+						<th>{!$ObjectType.LBI__ScoringQueue__c.fields.LBI__ErrorMessage__c.label}</th>
+						<th>{!$ObjectType.ScoringQueue__c.fields.ErrorCount__c.label}</th>
+						<th>{!$ObjectType.ScoringQueue__c.fields.Priority__c.label}</th>
+						<th>{!$ObjectType.ScoringQueue__c.fields.LinkToRecord__c.label}</th>
+						<th></th>
+				    </tr>
+				</thead>
+				<tbody>
+					<apex:repeat value="{!pageRecords}" var="record">
+					<tr>
+						<td><apex:outputField value="{!record.LBI__ErrorMessage__c}" /></td>
+						<td><apex:outputField value="{!record.LBI__ErrorCount__c}" /></td>
+						<td><apex:outputField value="{!record.LBI__Priority__c}" /></td>
+						<td><apex:outputField value="{!record.LBI__LinkToRecord__c}" /></td>
+			    	</tr>
+					</apex:repeat>
+				</tbody>
+			</table>
+			</apex:outputPanel>
+	    </apex:outputPanel>
+
+	    <apex:outputPanel layout="none" id="pageInfo">
+		    <apex:outputPanel layout="block" styleClass="row" rendered="{!showErrorDetails}">
+			<div class="col-md-4">
+		    	<p class="showing"><apex:outputText value="{!$Label.lbi__lab_recordcounter}">
+		    			<apex:param value="{!firstRecordShowing}" />
+		    			<apex:param value="{!lastRecordShowing}" />
+		    			<apex:param value="{!totalRecords}" />
+		    		</apex:outputText>
+		    	</p>
+		  	</div>
+		  	<div class="col-md-4"></div>
+		  	<div class="col-md-4">
+	    		<ul class="pagination errors">
+			        <li>
+			        	<apex:commandLink action="{!goToPreviousPage}" styleClass="{!IF(!pageNumberBar.showPrevious,'disabled','')} glyphicon-sf-pagination-back" reRender="pageInfo, errorDetails, messages" oncomplete="resetTableColumns();"/>
+			        </li>
+
+					<apex:outputPanel layout="none" rendered="{!pageNumberBar.showFirstEllipsis}">
+						<li>
+							<apex:commandLink action="{!goToPage}" value="1" reRender="pageInfo, errorDetails, messages" oncomplete="resetTableColumns();">
+								<apex:param value="1" name="thePageNumber" assignTo="{!currentPageNumber}" />
+							</apex:commandLink>
+						</li>
+		        		<li><a class="disabled" href="#">...</a></li>
+					</apex:outputPanel>
+			  		<apex:repeat value="{!pageNumberBar.visiblePageNumbers}" var="pageNumber">
+			  			<li>
+			  				<apex:commandLink action="{!goToPage}" value="{!pageNumber}" reRender="pageInfo, errorDetails, messages" rendered="{!pageNumber != pageNumberBar.pageNumber}" oncomplete="resetTableColumns();">
+								<apex:param value="{!pageNumber}" name="thePageNumber" assignTo="{!currentPageNumber}" />
+							</apex:commandLink>
+							<apex:outputPanel layout="none" rendered="{!pageNumber == pageNumberBar.pageNumber}"><a class="active" href="#">{!pageNumber}</a></apex:outputPanel>
+			  			</li>
+			  		</apex:repeat>
+		        	<apex:outputPanel layout="none" rendered="{!pageNumberBar.showLastEllipsis}">
+		        		<li><a class="disabled" href="#">...</a></li>
+						<li>
+							<apex:commandLink action="{!goToPage}" value="{!pageNumberBar.totalPages}" reRender="pageInfo, errorDetails, messages" oncomplete="resetTableColumns();">
+								<apex:param value="{!pageNumberBar.totalPages}" name="thePageNumber" assignTo="{!currentPageNumber}" />
+							</apex:commandLink>
+						</li>
+					</apex:outputPanel>
+		        	<li>
+		        		<apex:commandLink action="{!goToNextPage}" styleClass="{!IF(!pageNumberBar.showNext,'disabled','')} glyphicon-sf-pagination-forward" reRender="pageInfo, errorDetails,  messages"  oncomplete="resetTableColumns();"/>
+		        	</li>
+	    		</ul>
+		  	</div>
+			</apex:outputPanel>
+	    </apex:outputPanel>
+
+    </div>
+
+</div>
+
+</apex:form>
+
+</apex:page>

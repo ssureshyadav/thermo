@@ -1,0 +1,50 @@
+<aura:component >
+	<aura:attribute access="public" name="fieldValue" type="Object" />
+	<aura:attribute access="public" name="fieldType" type="String" />
+
+	<aura:attribute access="private" name="displayValue" type="Object" />
+	<aura:attribute access="private" name="displayType" type="Object" />
+
+    <aura:handler name="init" value="{!this}" action="{!c.init}"/>
+
+    <aura:if isTrue="{!v.displayType == 'DATETIME'}"> <!--Used by Company Profile Too -->
+		<ui:outputDateTime value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'DATE'}">
+		<ui:outputDate value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'EMAIL'}">
+		<ui:outputEmail value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'PHONE'}">
+		<ui:outputPhone value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'CURRENCY'}"> <!--Used by Company Profile Too -->
+		<ui:outputCurrency value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'NUMBER'}"> <!--Used by Company Profile Too -->
+		<ui:outputNumber value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'BOOLEAN'}"> <!--Used by Company Profile Too -->
+		<ui:outputCheckbox value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'TEXTAREA'}">
+		<ui:outputTextArea value="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'URL'}">
+		<ui:outputURL value="{!v.displayValue}" label="{!v.displayValue}"/>
+	</aura:if>
+
+	<aura:if isTrue="{!v.displayType == 'STRING'}">
+		<ui:outputText value="{!v.displayValue}"/>
+	</aura:if>
+
+</aura:component>

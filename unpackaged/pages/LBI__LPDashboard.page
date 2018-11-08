@@ -1,0 +1,332 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.LPDashboardController"
+			standardStylesheets="false"
+			docType="html-5.0"
+			action="{!initializePage}"
+			readOnly="true"
+			title="{!$Label.lbi__lpd_title}"
+            tabStyle="Lattice_Dashboard__tab">
+
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/global.css')}" />
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__DateTimePicker,'jquery.datetimepicker.css')}" />
+
+    <apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__DateTimePicker,'/build/jquery.datetimepicker.full.min.js')}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/jquery.sumoselect.min.js')}" />
+    <apex:includeScript value="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.5/js/bootstrap-select.min.js" />
+    <apex:includeScript value="{!$Resource.LBI__LPDashboard_js}" />
+
+	<!-- <apex:includeScript value="{!URLFOR($Resource.mixpanel_js)}"  /> -->
+<apex:form >
+
+<script type="text/javascript" >
+/*
+	var mpOldTabName = "{!JSENCODE($Label.LPD_LeadsScored)}";
+	var mpBasicReturnObject = {"Page" : "{!JSENCODE($CurrentPage.Name)}",
+															"OrgID" : "{!JSENCODE($Organization.Id)}",
+															"CustomerID" : hashCode("{!JSENCODE($User.Id)}"),
+															"Product Name" : "BIS"};
+
+	var mixpanelModule = new MixPanelModule($, mpBasicReturnObject, mpOldTabName, {isEnabledMixPanel});
+*/
+	window.dashboardSettings = window.dashboardSettings || {};
+
+	window.dashboardSettings = {
+		Variables: {
+            selectedDate: '{!selectedDate}'
+        },
+		Labels: {
+			ok: '{!JSENCODE($Label.LAB_Ok)}',
+			cancel: '{!JSENCODE($Label.LAB_Cancel)}',
+			search: '{!JSENCODE($Label.LAB_Search)}',
+			selectAllNone: '{!JSENCODE($Label.LAB_SelectAllNone)}',
+			xSourcesSelected: '{!JSENCODE($Label.LAB_XSourcesSelected)}',
+			xStatusesSelected: '{!JSENCODE($Label.LAB_XStatusesSelected)}',
+			filterBySource: '{!JSENCODE($Label.LPD_FilterBySource)}',
+			filterByStatus: '{!JSENCODE($Label.LPD_FilterByStatus)}'
+		}
+	}
+
+	function esc(myid) {
+		return '#' + myid.replace(/(:|\.)/g,'\\\\$1');
+ 	}
+
+	function setFocusOnLoad() {}
+
+	$( document ).ready(function() {
+
+		activateTab('lead');
+		attachControls();
+
+		// mixpanelModule.assingMPEventsForDashboard();
+		// mixpanelModule.sendMpMessage("Page Load");
+	    // mixpanelModule.startTabStopwatch();
+	});
+
+	window.onbeforeunload = function (arg) {
+		//mixpanelModule.sendMpPageDurationMessage("Page Unload");
+	}
+
+	function refreshStats() {
+		Visualforce.remoting.Manager.invokeAction(
+	    	'{!$RemoteAction.LPDashboardController.runNightlyJob}',
+	    	returnRefreshStats,
+	        {buffer: true, escape: true}
+		);
+	}
+
+	function returnRefreshStats(result, event) {
+		//Nothing here, really, just to catch the return
+	}
+</script>
+
+<!-- This shows up when they don't have permissions -->
+<apex:outputPanel layout="none" rendered="{!!hasPermissionRequired}" >
+	<apex:pageMessages id="noPermissionPageMessages" />
+</apex:outputPanel>
+
+
+<!-- This only renders when they DO have access. -->
+<apex:outputPanel layout="none" rendered="{!hasPermissionRequired}" >
+
+	<apex:actionFunction name="filterCharts" action="{!filterCharts}" rerender="messages, allGraphs, allGraphs2, allGraphs3, allGraphs2_1, allGraphs3_1" oncomplete="toggleAllPanels();$('#el_loading1').hide();">
+		<apex:param value="" name="selectedScoreField" assignTo="{!selectedScoreField}" />
+		<apex:param value="" name="selectedScoreFieldAccount" assignTo="{!selectedScoreFieldAccount}" />
+		<apex:param value="" name="selectedScoreFieldContact" assignTo="{!selectedScoreFieldContact}" />
+		<apex:param value="" name="selectedDate" assignTo="{!selectedDate}" />
+		<apex:param value="" name="selectedSource" assignTo="{!selectedSource}" />
+		<apex:param value="" name="selectedStatus" assignTo="{!selectedStatus}" />
+	</apex:actionFunction>
+
+	<apex:outputPanel layout="none" id="poller">
+		<apex:actionPoller action="{!checkForJobDone}" reRender="poller" interval="5" rendered="{!showRefreshedLabel}" />
+
+		<apex:actionPoller action="{!refreshChartsDoneCleanup}" reRender="messages, allGraphs, allGraphs2, allGraphs3, allGraphs2_1, allGraphs3_1, graphUpdated" interval="5" rendered="{!refreshChartsDone && !showRefreshedLabel}" oncomplete="attachControls();toggleAllPanels();" />
+
+	</apex:outputPanel>
+
+    <div class="bootstrap-lattice dashboard lead-prioritization">
+
+        <div class="primary-header">
+            <div class="branding pull-left">
+                <h1>{!$Label.lbi__lpd_title}</h1>
+            </div>
+            <c:AppChangeComponent id="appChangeComponent"
+									useInAdminScreen="false"
+									linkClassName="change-application pull-right"
+									destinationVFPage="DashboardSwitcher"
+									performDMLOnComponent="false"
+									/>
+        </div>
+        <div class="secondary-header">
+            <ul class="tabs secondary-tabs pull-left">
+				<li id="leadLink" class="active reportlink"><a href="#" onclick="activateTab('lead');">{!$Label.LPD_LeadScoreDashboard}</a></li>
+<!-- SK 10/20/16 Temporarily commented out
+				<li id="accountLink" class="reportlink"><a href="#" onclick="activateTab('account');">{!$Label.LPD_AccountScoreDashboard}</a></li>
+                <li id="contactLink" class="reportlink"><a href="#" onclick="activateTab('contact');">{!$Label.LPD_ContactScoreDashboard}</a></li>
+-->
+            </ul>
+            <apex:outputPanel styleClass="last-update pull-right" layout="block" id="graphUpdated">
+                <apex:outputPanel layout="none" rendered="{!chartDataLastSuccess != null && !showRefreshedLabel}">
+					<apex:outputText value="{!$Label.lbi__dsh_lastupdatedon}:" />&nbsp;
+					<strong><c:FormattedDateTime datetimeValue="{!chartDataLastSuccess}" datetimeFormat="MMMM dd, yyyy hh:mm a" /></strong>
+				</apex:outputPanel>
+
+				<apex:outputText value="{!$Label.lbi__dsh_refreshstarted}" styleClass="small help-text pull-left" rendered="{!showRefreshedLabel}" />
+
+			</apex:outputPanel>
+        </div>
+
+        <div class="facets form-inline">
+			<span class="filterSpan" id="leadFilters" style="display:none">
+	            <div class="form-group">
+					<select id="scoreField" class="selectpicker" data-live-search="true" onchange="callFilterCharts();">
+						<apex:repeat value="{!availableFields}" var="fld">
+							<option value="{!fld.value}">{!fld.label}</option>
+						</apex:repeat>
+					</select>
+	            </div>
+	            <div class="form-group">
+	                <select id="statusFilter" multiple="multiple" onchange="callFilterCharts();">
+						<apex:repeat value="{!availableStatuses}" var="sta">
+							<option selected="true" value="{!sta.value}">
+								<apex:outputText value="{!sta.label}" />
+							</option>
+						</apex:repeat>
+					</select>
+	            </div>
+	            <div class="form-group">
+	                <select id="sourceFilter" multiple="multiple" onchange="callFilterCharts();">
+						<apex:repeat value="{!availableSources}" var="src">
+							<option selected="true" value="{!src.value}">
+								<apex:outputText value="{!src.label}" />
+							</option>
+						</apex:repeat>
+					</select>
+	            </div>
+	            <div class="form-group">
+	                <input type="text" id="filterDate" class="form-control dateControl" disabled="disabled" />
+					<i class="glyphicon glyphicon-calendar fa fa-calendar" onclick="showDatePicker();"></i>
+	            </div>
+			</span>
+			<span class="filterSpan" id="accountFilters" style="display:none">
+				<div class="form-group">
+					<select id="scoreFieldAccount" class="selectpicker" data-live-search="true" onchange="callFilterCharts();">
+						<apex:repeat value="{!availableFieldsAccount}" var="fld">
+							<option value="{!fld.value}">{!fld.label}</option>
+						</apex:repeat>
+					</select>
+				</div>
+			</span>
+			<span class="filterSpan" id="contactFilters" style="display:none">
+				<div class="form-group">
+					<select id="scoreFieldContact" class="selectpicker" data-live-search="true" onchange="callFilterCharts();">
+						<apex:repeat value="{!availableFieldsContact}" var="fld">
+							<option value="{!fld.value}">{!fld.label}</option>
+						</apex:repeat>
+					</select>
+				</div>
+			</span>
+            <div class="form-group">
+                <apex:commandButton styleClass="btn-primary btn" value="{!$Label.lbi__lpd_refresh}" onclick="refreshStats();" action="{!refreshChartData}" reRender="graphUpdated, poller" />
+            </div>
+        </div>
+		<apex:pageMessages id="messages" />
+
+        <div class="reports container-fluid" id="leadPanel" style="display:none">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="report">
+                        <h3>{!$Label.LPD_LeadsScored}</h3>
+                        <div class="btn-group pull-right" data-toggle="buttons">
+                            <label class="btn active">
+                                <input type="radio" name="leadsScoredToggle" value="Weekly" autocomplete="off" checked="checked" onchange="toggleCumulative('leadsScored');"/> {!$Label.LPD_Weekly}
+                            </label>
+                            <label class="btn">
+                                <input type="radio" name="leadsScoredToggle" value="Cummulative" autocomplete="off" onchange="toggleCumulative('leadsScored');"/> {!$Label.LPD_Cummulative}
+                            </label>
+                        </div>
+						<apex:outputPanel layout="inline" id="allGraphs">
+							<span id="leadsScoredWeekly">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilter}" developername="{!openLeadsReportName}"></analytics:reportChart>
+							</span>
+							<span id="leadsScoredCummulative" style="display:none">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilter}" developername="{!openLeadsCumulativeReportName}"></analytics:reportChart>
+							</span>
+						</apex:outputPanel>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="report">
+                        <h3>{!$Label.LPD_ScoreBySource}</h3>
+                        <div class="btn-group pull-right" data-toggle="buttons">
+                            <label class="btn active">
+                                <input type="radio" name="scoreSourceToggle" value="Weekly" autocomplete="off" checked="checked" onchange="toggleCumulative('scoreSource');"/> {!$Label.LPD_Standard}
+                            </label>
+                            <label class="btn">
+                                <input type="radio" name="scoreSourceToggle" value="Cummulative" autocomplete="off" onchange="toggleCumulative('scoreSource');"/> {!$Label.LPD_Percentage}
+                            </label>
+                        </div>
+						<apex:outputPanel layout="inline" id="allGraphs2">
+							<span id="scoreSourceWeekly">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilter}" developername="{!openLeadsBySourceName}"></analytics:reportChart>
+							</span>
+							<span id="scoreSourceCummulative" style="display:none">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilter}" developername="{!openLeadsBySourcePercentName}"></analytics:reportChart>
+							</span>
+						</apex:outputPanel>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="report">
+                        <h3>{!$Label.LPD_Opportunities}</h3>
+                        <div class="btn-group pull-right" data-toggle="buttons">
+                            <label class="btn active">
+                                <input type="radio" name="opportunitiesToggle" value="Weekly" autocomplete="off" checked="checked" onchange="toggleCumulative('opportunities');"/> {!$Label.LPD_Weekly}
+                            </label>
+                            <label class="btn">
+                                <input type="radio" name="opportunitiesToggle" value="Cummulative" autocomplete="off" onchange="toggleCumulative('opportunities');"/> {!$Label.LPD_Cummulative}
+                            </label>
+                        </div>
+						<apex:outputPanel layout="inline" id="allGraphs3">
+							<span id="opportunitiesWeekly">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilter}" developername="{!convertedLeadsReportName}"></analytics:reportChart>
+							</span>
+							<span id="opportunitiesCummulative" style="display:none">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilter}" developername="{!convertedLeadsCumulativeReportName}"></analytics:reportChart>
+							</span>
+						</apex:outputPanel>
+                    </div>
+                </div>
+            </div>
+        </div>
+		<div class="reports container-fluid" id="accountPanel" style="display:none">
+			<div class="row">
+				<div class="col-md-4">
+					<div class="report">
+						<h3>{!$Label.lbi__lpd_accountsscored}</h3>
+						<apex:outputPanel layout="inline" id="allGraphs2_1">
+							<span id="leadsScoredWeekly">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilterAccount}" developername="{!accountScoreReport}"></analytics:reportChart>
+							</span>
+						</apex:outputPanel>
+					</div>
+				</div>
+				<div class="col-md-4">
+				</div>
+				<div class="col-md-4">
+				</div>
+
+			</div>
+		</div>
+		<div class="reports container-fluid" id="contactPanel" style="display:none">
+			<div class="row">
+				<div class="col-md-4">
+					<div class="report">
+						<h3>{!$Label.lbi__lpd_contactsscored}</h3>
+						<apex:outputPanel layout="inline" id="allGraphs3_1">
+							<span id="leadsScoredWeekly">
+								<analytics:reportChart size="medium" cacheResults="false" filter="{!chartFilterContact}" developername="{!contactScoreReport}"></analytics:reportChart>
+							</span>
+						</apex:outputPanel>
+					</div>
+				</div>
+				<div class="col-md-4">
+				</div>
+				<div class="col-md-4">
+				</div>
+
+			</div>
+		</div>
+
+    </div>
+</apex:outputPanel>
+
+<apex:outputPanel >
+	<apex:actionstatus id="status">
+		<apex:facet name="start">
+			<div class="waitingSearchDiv" id="el_loading" style="display:none; background-color: #fbfbfb; height: 100%;opacity:0.65;width:100%;">
+				<div class="waitingHolder" style="top: 74.2px; width: 91px;">
+				   <img class="waitingImage" src="/img/loading.gif" title="Please Wait..." />
+				   <span class="waitingDescription">
+					<apex:outputText value="{!$Label.lbi__lab_loading}" />
+				   </span>
+			   </div>
+		   </div>
+	   </apex:facet>
+   </apex:actionstatus>
+</apex:outputPanel>
+
+<div class="waitingSearchDiv" id="el_loading1" style="display:none; background-color: #fbfbfb; height: 100%;opacity:0.65;width:100%;">
+	<div class="waitingHolder" style="top: 74.2px; width: 91px;">
+	   <img class="waitingImage" src="/img/loading.gif" title="Please Wait..." />
+	   <span class="waitingDescription">
+		<apex:outputText value="{!$Label.lbi__lab_loading}" />
+	   </span>
+   </div>
+</div>
+
+</apex:form>
+
+</apex:page>

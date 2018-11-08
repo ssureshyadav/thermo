@@ -1,0 +1,342 @@
+<apex:page showHeader="false" 
+			sidebar="false" 
+			standardController="LBI__Recommendation__c" 
+			standardStylesheets="false" 
+			extensions="LBI.MobileRecommendationNewEventController" 
+			docType="html-5.0" 
+			id="thePage" 
+			applyHtmlTag="false" 
+			applyBodyTag="false"
+			showQuickActionVfHeader="false">
+
+	<html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+		<head>
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__SLDS092, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+			<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+			<apex:includeScript value="{!URLFOR($Resource.LBI__SLDSValidator)}" />
+			
+			<script type="text/javascript" >
+				var lejQuery = jQuery.noConflict();
+				
+		        lejQuery(document).ready(function(){
+		        	if ({!isInLightning}) {
+		            	lejQuery("div.slds").addClass("lightning");
+		            }
+		        });
+			</script>
+
+			<!--Including Custom datepicker plugins .Get rid of this when SF1 bug with android is resolved .This is conditional render for android OS-->
+			<apex:outputPanel layout="none" rendered="{!isAndroidOrFirefox}">
+				<apex:includeScript value="{!URLFOR($Resource.LBI__CustomDatePicker, 'CustomDatetimePicker/jquery.datetimepicker.js')}"/>
+				<link rel="stylesheet" href="{!URLFOR($Resource.CustomDatePicker, 'CustomDatetimePicker/jquery.datetimepicker.css')}"/>
+			</apex:outputPanel>
+
+		</head>
+
+		<body>
+			<apex:form id="theForm">
+				<div class="slds">
+					<div class="slds-grid slds-wrap">
+
+						<!--Action Buttons -->
+						<div class="slds-col slds-size--1-of-1">
+							<a href="#" class="slds-button slds-button--neutral slds-float--left" onclick="cancel();" id="cancel">
+								<apex:outputtext value="{!$Label.lbi__lab_cancel}"/>
+							</a>
+							<a href="#" class="slds-button slds-button--brand slds-float--right" id="callbtn" onclick="newEvent();">
+								<apex:outputtext value="{!$Label.lbi__lab_save}"/>
+							</a>
+						</div>
+
+						<div class="slds-col slds-size--1-of-1 slds-m-vertical--large">
+							<h2 class="slds-text-heading--medium">
+								<apex:outputtext value="{!$Label.lbi__rep_set_up_meeting_new}" />
+							</h2>
+						</div>
+
+						<div class="slds-col slds-size--1-of-1" id="errorwrapper">
+						</div>
+
+						<div class="slds-col slds-size--1-of-1">
+
+							<div class="slds-form-element slds-m-vertical--medium">
+								<label class="slds-form-element__label" for="Account">
+									<apex:outputText value="{!$Label.lbi__rep_assignedto}" />
+								</label>
+								<div class="slds-form-element__control">
+									<c:Typeahead searchBoxId="assigneduserId" placeholder="Search from Existing User" destinationForSelectedId="usrId" primaryFocusField="Name" whereClause="" objectName="User" mapParameters="" required="true">
+									</c:Typeahead>
+								</div>
+							</div>
+
+							<div class="slds-form-element slds-m-vertical--medium">
+								<label class="slds-form-element__label" for="location">
+									<apex:outputtext value="{!$ObjectType.Event.fields.Location.label}"/>
+								</label>
+								<div class="slds-form-element__control">
+									<apex:input id="location" styleclass="slds-input" type="text"/>
+								</div>
+							</div>
+
+							<div class="slds-form-element">
+								<label class="slds-form-element__label" for="subject">
+									<apex:outputtext value="* {!$ObjectType.Event.fields.Subject.label}"/>
+								</label>
+								<div class="slds-form-element__control">
+									<input id="subject" class="slds-input" type="text" data-required="true" data-fieldName="Subject"/>
+								</div>
+							</div>
+
+							<div class="slds-col slds-size--1-of-2">
+								<!-- Add in the classes below of 'slds-has-error slds-is-required' -->
+								<div class="slds-form-element">
+									<label class="slds-form-element__label" for="startDatetime">
+										<apex:outputtext value="{!$ObjectType.Event.fields.StartDateTime.label}"/>
+									</label>
+									<div class="slds-form-element__control">
+										<input id="startDatetime" type="{!IF(isAndroidOrFirefox, 'text', 'datetime-local')}" required="true" data-required="true" data-fieldName="StartDatetime"/>
+									</div>
+								</div>
+							</div>
+
+							<div class="slds-col slds-size--1-of-2">
+								<!-- Add in the classes below of 'slds-has-error slds-is-required' -->
+								<div class="slds-form-element slds-m-vertical--medium">
+									<label class="slds-form-element__label" for="endDatetime">
+										<apex:outputtext value="* {!$ObjectType.Event.fields.EndDateTime.label}"/>
+									</label>
+									<div class="slds-form-element__control">
+										<input id="endDatetime" type="{!IF(isAndroidOrFirefox, 'text', 'datetime-local')}" data-required="true" data-fieldName="End Date time" />
+									</div>
+								</div>
+							</div>
+
+							<div class="slds-col slds-size--1-of-2">
+								<div class="slds-form-element__control slds-m-vertical--medium">
+									<label class="slds-checkbox" for="alldayevent">
+										<input name="checkbox" type="checkbox" id="alldayevent" />
+										<span class="slds-checkbox--faux"></span>
+										<span class="slds-form-element__label">
+											<apex:outputText value="{!$Label.lbi__rep_alldayevent}" />
+										</span>
+									</label>
+								</div>
+							</div>
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+								<div class="slds-form-element">
+									<label class="slds-form-element__label" for="Contact">
+										<apex:outputText value="{!$Label.lbi__mod_contact}" />
+									</label>
+									<c:Typeahead searchBoxId="contactId" placeholder="Search from Existing Contact" destinationForSelectedId="cntId" primaryFocusField="Name" whereClause="" objectName="Contact" mapParameters="" accountId="{!LBI__Recommendation__c.LBI__Account__c}">
+									</c:Typeahead>
+								</div>
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+
+								<div class="slds-form-element slds-m-vertical--medium">
+									<label class="slds-form-element__label slds-m-top--small" for="accountId">
+										<apex:outputText value="{!$Label.lbi__mod_account}" />
+									</label>
+
+									<div class="slds-form-element__control">
+										<span id="accountId" styleclass="slds-form-element__static" type="text">
+											<apex:outputtext value="{!LBI__Recommendation__c.Account__r.Name}" />
+										</span>
+									</div>
+								</div>
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}">
+								<div class="slds-form-element slds-m-vertical--medium">
+									<label class="slds-form-element__label slds-m-top--small" for="leadId">
+										<apex:outputText value="{!$Label.lbi__mod_lead}" />
+									</label>
+									<div class="slds-form-element__control">
+										<span id="leadId" styleclass="slds-form-element__static" type="text">
+											<apex:outputtext value="{!LBI__Recommendation__c.Lead__r.Name}"/>
+										</span>
+									</div>
+								</div>
+							</apex:outputPanel>
+
+							<div class="slds-form-element slds-m-vertical--medium">
+								<label class="slds-form-element__label" for="description">
+									<apex:outputtext value="{!$ObjectType.Event.fields.Description.label}"/>
+								</label>
+								<div class="slds-form-element__control">
+									<textarea id="description" class="slds-textarea" ></textarea>
+								</div>
+							</div>
+
+							<input type="hidden" name="usrId" id="usrId" />
+							<input type="hidden" name="cntId" id="cntId" />
+
+						</div>
+					</div>
+				</div>
+				<!-- Doing this because, once installed, we're having problems with this field and the standard controller -->
+				<apex:inputHidden value="{!LBI__Recommendation__c.LBI__LeadId__c}" />
+
+			</apex:form>
+			<script type="text/javascript">
+
+				var imageURL = "{!URLFOR($Resource.SLDS092, 'assets/icons/action-sprite/svg/symbols.svg#close')}";
+				var j$ = jQuery.noConflict();
+
+				j$(document).ready(function () {
+					init();
+					if (console) {
+						console.log('Is Android or Firefox:  {!isAndroidOrFirefox}');
+					}
+					if ('{!isAndroidOrFirefox}' === 'true') {
+						if (console) {
+							console.log('Attaching datepicker.');
+						}
+						var date = new Date();
+						j$('#startDatetime').datetimepicker({
+							value : date.toLocaleString('en-US'),
+							format : 'm/d/Y H:i A'
+						});
+						j$('#endDatetime').datetimepicker({
+							format : 'm/d/Y H:i A'
+						});
+					}
+					
+				});
+
+				function init() {
+					document.getElementById('assigneduserId').value = '{!$User.FirstName}' + ' ' + '{!$User.LastName}';
+					document.getElementById('usrId').value = '{!$User.Id}';
+					var datetime = new Date(); //Create the date instance in JS
+					currendatetime();
+				}
+
+				function cancel() {
+					if ('{!$CurrentPage.parameters.fromLead}' == 'true') {
+						//sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&mobilemessage={!$label.MOBILEINFO_RecommendationEventCreatedCancelled}&success=0',true);
+						sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+					} else {
+						//sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$label.MOBILEINFO_RecommendationEventCreatedCancelled}&success=0',true);
+						sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+					}
+				}
+
+				// Current local time
+
+				function currendatetime() {
+					var currentDate = new Date();
+					// Find the current time zone's offset in milliseconds.
+					var timezoneOffset = currentDate.getTimezoneOffset() * 60 * 1000;
+					// Subtract the time zone offset from the current UTC date, and pass
+					//  that into the Date constructor to get a date whose UTC date/time is
+					//  adjusted by timezoneOffset for display purposes.
+					var localDate = new Date(currentDate.getTime() - timezoneOffset);
+					// Get that local date's ISO date string and remove the Z.
+					var localDateISOString = localDate.toISOString().replace('Z', '');
+					// Finally, set the input's value to that timezone-less string.
+					document.getElementById('startDatetime').value = localDateISOString;
+				}
+
+				//This function formats the date time specifically for picker for android
+				//Get rid of this code when SF1 bug with android OS is resolved
+				function formatDateString(datestring) {
+					if (datestring) {
+						var datefield = datestring.split(' ');
+						var datearray = []
+						datearray = datefield[0].split('/');
+						var string = datearray[2] + '-' + datearray[0] + '-' + datearray[1] + 'T';
+						string = string + datefield[1];
+					}
+					return string;
+				}
+
+				function utcDateString(startDatetime) {
+					var datec = new Date(startDatetime);
+					var currentDate = new Date();
+					var timezoneOffset = currentDate.getTimezoneOffset() * 60 * 1000;
+					var utcDate = new Date(datec.getTime() + timezoneOffset);
+					return utcDate.toUTCString﻿();
+				}
+
+				// Only for android SF1 devices and can be removed once SF1 bug with android is fixed
+				function utcDateStringnoOffset(startDatetime) {
+					var datec = new Date(startDatetime);
+					var currentDate = new Date();
+					var utcDate = new Date(datec.getTime() + 0);
+					return utcDate.toUTCString﻿();
+				}
+
+				function getElementvalue(documentId) {
+					return document.getElementById(documentId).value;
+				}
+
+				function newEvent() {
+					//if(sforce.one) {
+					if (!validatorSLDSplugin.validate()) {
+						var description = getElementvalue('description');
+						var subject = getElementvalue('subject');
+						var contactId = getElementvalue('cntId');
+						var startDatetime;
+						var endDatetime;
+
+						if ('{!isAndroidOrFirefox}' === 'true') { //Get rid of this when SF1 bug with respect to android is resolved
+							startDatetime = utcDateStringnoOffset(formatDateString(getElementvalue('startDatetime')));
+							endDatetime = utcDateStringnoOffset(formatDateString(getElementvalue('endDatetime')));
+						} else {
+							startDatetime = utcDateString(getElementvalue('startDatetime'));
+							endDatetime = utcDateString(getElementvalue('endDatetime'));
+						}
+
+						var assignedTo = getElementvalue('usrId');
+						var alldayevent = document.getElementById('alldayevent').checked;
+						var accountId;
+						if ('{!JSENCODE(Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.Type__c)}' === 'Lead') {
+							contactId = '{!JSENCODE(Recommendation__c.LeadId__c)}';
+						}
+						if ('{!JSENCODE(Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.Type__c)}' === 'Recommendation') {
+							accountId = '{!JSENCODE(Recommendation__c.Account__c)}';
+						} else {
+							accountId = '';
+						}
+						Visualforce.remoting.Manager.invokeAction(
+							'{!$RemoteAction.MobileRecommendationNewEventController.newEvent
+													}',
+							subject,
+							description,
+							accountId,
+							'{!JSENCODE(Recommendation__c.Id)}',
+							contactId,
+							assignedTo,
+							startDatetime,
+							endDatetime,
+							alldayevent,
+							function (result, event) {
+							if (event.status) {
+								if ('{!$CurrentPage.parameters.fromLead}' == 'true') {
+									sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!LBI__Recommendation__c.LBI__LeadId__c}&mobilemessage={!$label.MOBILEINFO_RecommendationEventCreated}&backCounter={!$CurrentPage.parameters.backCounter}&success=1', true);
+								} else {
+									sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$label.MOBILEINFO_RecommendationEventCreated}&backCounter={!$CurrentPage.parameters.backCounter}&success=1', true);
+								}
+								//sforce.one.navigateToSObject('{!JSENCODE(Recommendation__c.Id)}');
+							} else {
+								// TODO: deal with error by inserting error message on DOM
+								validatorSLDSplugin.displayalert(event.message, 'error');
+							}
+						}, {
+							escape : false
+						});
+					}
+				}
+
+				window.onkeydown = function () { // Workaround for known issue with SFDC(https://success.salesforce.com/issues_view?id=a1p30000000T5l1AAC)
+					window.focus();
+				}
+			</script>
+		</body>
+
+	</html>
+</apex:page>

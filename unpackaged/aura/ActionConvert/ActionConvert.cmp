@@ -1,0 +1,36 @@
+<aura:component controller="LBI.LCActionConvertController" >
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="recommendations" type="Object[]" />
+
+	<aura:attribute access="public" name="closingMessage" type="String" />
+	<aura:attribute access="public" name="pageInfo" type="Object" />
+	<aura:attribute access="public" name="partialOpp" type="Opportunity"  default="{'sobjectType':'Opportunity'}"/>
+	<aura:attribute access="public" name="opportunityFieldInfo" type="Aura.Component[]"/>
+	<!--<aura:attribute access="public" name="opportunityFieldInfo" type="Object[]"/> -->
+
+    <aura:registerEvent name="cancel" type="LBI:ModalCancel"/>
+    <aura:registerEvent name="save" type="LBI:ModalSave"/>
+
+    <aura:handler name="inputChanged" event="LBI:InputValueChanged" action="{!c.handleLookupChange}" includeFacets="true"/>
+
+    <aura:dependency resource="markup://LBI:InputLookup" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:InputMultiSelect" type="COMPONENT"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}"  />
+
+    <lightning:layout verticalAlign="top" multipleRows="true" pullToBoundary="small">
+    	<aura:iteration items="{!v.opportunityFieldInfo}" var="fld">
+			<lightning:layoutItem padding="horizontal-small" size="6" largeDeviceSize="6" mediumDeviceSize="6" smallDeviceSize="12">
+				{!fld}
+			</lightning:layoutItem>
+		</aura:iteration>
+    </lightning:layout>
+
+    <div class="actionButtons">
+    	<lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelEvent}" />
+		<lightning:button variant="brand" label="Save"  onclick="{!c.handleSaveEvent}" />
+    </div>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

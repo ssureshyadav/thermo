@@ -1,0 +1,24 @@
+<aura:component >
+	<aura:attribute access="public" name="apiName" type="String" required="true" />
+	<aura:attribute access="public" name="label" type="String" required="true" />
+	<aura:attribute access="public" name="isSortable" type="Boolean" required="true" />
+	<aura:attribute access="public" name="isSorted" type="Boolean" default="false" />
+	<aura:attribute access="public" name="isAscending" type="Boolean" default="false" />
+
+    <aura:registerEvent name="click" type="LBI:SortableHeaderClick"/>
+
+    <span onclick="{!c.handleClick}" class="{!(v.isSortable) ? 'sortable' : ''}">
+		{!v.label}
+
+	    <aura:if isTrue="{!v.isSorted &amp;&amp; v.isAscending}">
+	    	<span class="order">
+	    		<lightning:icon iconName="utility:chevronup" size="x-small" alternativeText="Ascending" />
+	    	</span>
+	    </aura:if>
+	    <aura:if isTrue="{!v.isSorted &amp;&amp; !v.isAscending}">
+	    	<span class="order">
+	    		<lightning:icon iconName="utility:chevrondown" size="x-small" alternativeText="Descending" />
+	    	</span>
+	    </aura:if>
+	</span>
+</aura:component>

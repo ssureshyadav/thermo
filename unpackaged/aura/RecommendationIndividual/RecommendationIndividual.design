@@ -1,0 +1,9 @@
+<design:component label="Lattice - Individual Recommendation for Object">
+	<sfdc:objects >
+        <sfdc:object >Account</sfdc:object>
+        <sfdc:object >Contact</sfdc:object>
+        <sfdc:object >Lead</sfdc:object>
+        <sfdc:object >Opportunity</sfdc:object>
+    </sfdc:objects>
+
+</design:component>

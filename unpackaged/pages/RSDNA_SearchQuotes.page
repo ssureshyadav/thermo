@@ -1,0 +1,90 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : sanneboinasuresh.yadav@nttdata.com    
+    Company     : NTTDATA
+    Date        : 20 April,2017
+    Description : To display Quotes related to account for creating the opportunities
+                  W-000064:RSDNA-0030: Create an Opportunity from an Existing Quote 
+    
+-->
+
+<apex:page controller="RSDNA_SearchQuotes" docType="html-5.0">
+    <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.min.css')}" />
+        <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+        <div class="BBLDS">
+    <apex:form >    
+   <div role="dialog" class="slds-modal slds-fade-in-open slds-modal--large">
+  <div class="slds-modal__container">
+    <div class="slds-modal__header">
+      <button class="slds-button slds-modal__close slds-button--icon-inverse" title="Close">
+        <span class="slds-assistive-text">Close</span>
+      </button>
+      <h2 id="header43" class="slds-text-heading--medium">Add Quotes From Account Name: {!acc.Name}</h2>
+    </div>
+    <div class="slds-modal__content slds-scrollable slds-p-top--small">
+        <div class="slds-p-left--large">
+            <apex:pagemessages />
+            <apex:inputText value="{!searchText}" styleClass="slds-input" html-placeholder="Search Quote"/>
+            <div style="margin-bottom:.5em;"></div>
+             <apex:commandButton value="Search" action="{!btnClickSearch}" reRender="sldsTable" styleClass="slds-button slds-button--neutral"/>
+            <div style="margin-bottom:.5em;"></div>
+            <apex:outputPanel rendered="{!!isFromOpportunity}">
+            <div>
+                <label class="slds-form-element__label" for="inputSample2">Opportunity Close Date</label>
+                <apex:input type="date" id="oppDate" value="{!oppCloseDate}" onfocus="DatePicker.pickDate(false, 'oppDate', false);"/>
+            </div>
+            </apex:outputPanel>
+        </div>
+        <div class="slds-p-top--large">
+        <apex:outputPanel id="sldsTable">
+        <table class="slds-table slds-table--bordered slds-table--resizable-cols" role="grid" id="table">
+          <thead>
+             <tr class="slds-line-height--reset">
+                  <td style="width:20px;"></td>
+               <apex:repeat value="{!Fields}" var="itm">
+                   <td class=" zen-deemphasize" scope="col">     
+                         <apex:commandLink action="{!sortPage}" value="{!if(itm.Label == 'Opportunity','Opportunity Name',itm.Label)}{!IF(sortExpression==itm,IF(sortDirection='DESC','↓','↑'),'')}" styleClass="x-grid3-hd-btn">
+                                 <apex:param value="{!itm}" name="column" assignTo="{!sortExpression}" ></apex:param>
+                           </apex:commandLink>                                  
+                        <!-- <apex:outputtext value="{!itm.Label}"/> -->
+                   </td>
+                </apex:repeat>
+           </tr>
+          </thead>
+          <tbody>
+            <apex:repeat value="{!lstQuoteHeaders}" var="item">
+             <tr>
+                    <td scope="col">                                       
+                        <apex:inputCheckbox value="{!item['checked']}" disabled="{!!ISBLANK(item['quoteHeader.RSD_Opportunity__c'])}"/>
+                   </td>
+                    <apex:repeat value="{!Fields}" var="itm">
+                       <td scope="col">
+                           <apex:outputPanel rendered="{!if(itm.Type == 'date','true','false')}"> 
+                               <apex:outputText value="{0,date,MM/dd/yy}"> 
+                                     <apex:param value="{!item['quoteHeader.'+itm]}" />
+                                 </apex:outputText>
+                           </apex:outputPanel>
+                           <apex:outputPanel rendered="{!if(itm.Type != 'date','true','false')}"> 
+                            <apex:outputtext rendered="{!itm = 'RSD_Opportunity__c' && item['quoteHeader.RSD_Opportunity__r.Name'] != null}" value="{!item['quoteHeader.RSD_Opportunity__r.Name']}"/>                                    
+                            <apex:outputtext rendered="{!itm != 'RSD_Opportunity__c'}" value="{!item['quoteHeader.'+itm]}"/>
+                            </apex:outputPanel>
+                       </td>
+                    </apex:repeat>
+            </tr>
+            </apex:repeat> 
+          </tbody>
+        </table>
+        </apex:outputPanel>
+        </div>
+    </div>
+    <div class="slds-modal__footer">
+        <apex:commandButton value="Cancel" action="{!btncancel}" styleClass="slds-button slds-button--neutral"/>
+        <apex:commandButton value="Select" action="{!btncreateOpportunities}" styleClass="slds-button slds-button--brand"/>
+    </div>
+    
+  </div>
+</div>
+<div class="slds-backdrop slds-backdrop--open"></div>
+</apex:form>
+</div>
+</apex:page>

@@ -1,0 +1,7 @@
+.THIS .slds-modal__content:last-child {
+    overflow-y: hidden;
+}
+.THIS .msg {
+    text-align: center;
+    margin-top: -9px;
+}

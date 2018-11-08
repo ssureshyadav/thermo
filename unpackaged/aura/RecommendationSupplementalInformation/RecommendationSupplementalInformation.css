@@ -1,0 +1,92 @@
+.THIS .order {
+    font-size: 10px;
+    display: inline-block;
+    margin-left: 5px;
+}
+
+.THIS .hideMe {
+	display: none;
+}
+.THIS .right-align button {
+	/*float: right;*/
+    text-align: right;
+}
+
+.THIS h3 {
+	display: block;
+	font-size: 16px;
+	margin-top: 20px;
+}
+
+.THIS .pagination ul {
+    padding-top: 10px;
+	float: right;
+	display: inline-block;
+    float: left;
+    text-align: right;
+    width: 80%;
+}
+
+.THIS .pagination p {
+    color: #989894;
+    display: inline-block;
+    float: left;
+    padding-top: 20px;
+    text-align: left;
+    width: 20%;
+}
+
+.THIS .noRecordsPanel {
+    color: #989894;
+    display: block;
+    font-size: 16px;
+    margin: 3em auto;
+    text-align: center;
+    width: 100%;
+}
+
+.THIS .first svg {
+    -moz-transform: rotate(90deg);
+    -ms-transform: rotate(90deg);
+    -webkit-transform: rotate(90deg);
+    transform: rotate(90deg);
+
+}
+
+.THIS .last svg {
+    -moz-transform: rotate(-90deg);
+    -ms-transform: rotate(-90deg);
+    -webkit-transform: rotate(-90deg);
+    transform: rotate(-90deg);
+
+}
+
+.THIS .table-wrapper {
+  width: 100%;
+  overflow-y: auto;
+  border-right: 1px solid #ddd;
+  border-left: 1px solid #ddd;
+}
+
+.THIS .utility-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.THIS .search-table {
+  display: flex;
+  width: 50%;
+  align-items: stretch;
+}
+.THIS .search-table * {
+  margin-left: 5px;
+}
+
+.THIS .utility-export {
+  text-align: right;
+  margin: 10px 0;
+  width: 100%;
+}

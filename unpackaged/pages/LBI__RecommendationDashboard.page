@@ -1,0 +1,695 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.RecommendationDashboardController"
+			standardStylesheets="false"
+			docType="html-5.0"
+			action="{!initializePage}"
+			readOnly="true"
+			title="{!$Label.lbi__title_lattice_dashboard}"
+            tabStyle="Lattice_Dashboard__tab">
+
+<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+<apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+<apex:includeScript value="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.5/js/bootstrap-select.min.js" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/jquery.sumoselect.min.js')}" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/addon.js')}" />
+<apex:includeScript value="{!$Resource.LBI__RecommendationDashboard_js}" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__mixpanel_js)}"  />
+
+<script type="text/javascript" >
+
+	var selectAllNone = '{!JSENCODE($Label.LAB_SelectAllNone)}';
+	var xSelected = '{!JSENCODE($Label.LAB_XSelected)}';
+
+	var mpOldTabName = "{!JSENCODE($Label.LAB_Total)}";
+    var mpBasicReturnObject = {"Page" : "{!JSENCODE($CurrentPage.Name)}",
+                                "OrgID" : "{!JSENCODE($Organization.Id)}",
+                                "CustomerID" : hashCode("{!JSENCODE($User.Id)}"),
+                                "Product Name" : "BIS"};
+
+    var mixpanelModule = new MixPanelModule($, mpBasicReturnObject, mpOldTabName, {!isEnabledMixPanel});
+
+	function esc(myid) {
+		return '#' + myid.replace(/(:|\.)/g,'\\\\$1');
+ 	}
+
+	$( document ).ready(function() {
+		activateTab('total');
+		resetDropdown();
+		resetTableColumns();
+		resetPlayDropdown();
+
+		mixpanelModule.assingMPEventsForDashboard();
+        mixpanelModule.sendMpMessage("Page Load");
+        mixpanelModule.startTabStopwatch();
+	});
+
+	window.onbeforeunload = function (arg) {
+	    mixpanelModule.sendMpPageDurationMessage("Page Unload");
+	}
+
+	function refreshStats() {
+		Visualforce.remoting.Manager.invokeAction(
+	    	'{!$RemoteAction.RecommendationDashboardController.runNightlyJob}',
+	    	returnRefreshStats,
+	        {buffer: true, escape: true}
+		);
+	}
+</script>
+
+<!-- This shows up when they don't have permissions -->
+	<apex:outputpanel layout="none" rendered="{!!hasPermissionRequired}" >
+		 <apex:pageMessages id="noPermissionPageMessages" />
+	</apex:outputpanel>
+
+	<!-- This only renders when they DO have access. -->
+	<apex:outputpanel layout="none" rendered="{!hasPermissionRequired}" >
+
+<!-- I Need these variables to refresh, so I put them separately -->
+<apex:outputPanel layout="inline" id="vars">
+<script type="text/javascript" >
+	var sortField = '{!JSENCODE(sortField)}';
+	var sortOrder = '{!JSENCODE(sortOrder)}';
+	var selectedPlay = '{!JSENCODE(selectedPlayName)}';
+</script>
+</apex:outputPanel>
+
+<apex:form id="theForm" >
+
+<apex:actionFunction name="filterOpportunityCharts" action="{!filterOpportunityCharts}" rerender="messages, stageFilter, allGraphs, allGraphs2" status="status" oncomplete="resetDropdown();resetTableColumns();">
+	<apex:param name="filterString" value="" assignTo="{!opportunityChartFilterString}" />
+</apex:actionFunction>
+
+<apex:actionFunction name="filterCharts" action="{!filterCharts}" rerender="vars, pageInfo, playTable, titleStats, messages, headerDropdown, statsTotal, statsAvailable, statsPipeline, playTypeGraphFilter, playGraphFilter, allGraphs, allGraphs2, statsOpen, statsInProgress, statsExpired, statsDisqualified, statsErrors, statsSuppressed, statsConversion, statsTimeToConversion, graphUpdated, graphUpdated2, rankFilter, byRankTable" status="status" oncomplete="resetTableColumns();resetPlayDropdown();">
+	<apex:param value="" name="selectedPlayName" assignTo="{!selectedPlayName}" />
+</apex:actionFunction>
+
+<apex:actionFunction name="resortTable" action="{!reSortTable}" rerender="pageInfo, playTable, vars, messages" oncomplete="resetDropdown();resetTableColumns();" status="status">
+	<apex:param name="field" value="" assignTo="{!sortField}" />
+	<apex:param name="order" value="" assignTo="{!sortOrder}" />
+</apex:actionFunction>
+
+<section class="content-main" id="bootstrap-lattice">
+
+<div id="sticky-nav" class="row">
+
+	<div class="col-md-6">
+		<div class="logo"></div>
+		<h2>
+			<apex:outputText value="{!$Label.lbi__dsh_dashboardtitle}" />
+		</h2>
+
+		<c:AppChangeComponent id="appChangeComponent"
+									useInAdminScreen="false"
+									destinationVFPage="DashboardSwitcher"
+									performDMLOnComponent="false"
+									/>
+	</div>
+
+	<div class="col-md-6 universal-filters">
+
+		<div class="dropdown">
+			<button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+		  		<apex:outputText id="headerDropdown" value="{!selectedFilterLabel}" />
+		    	<span class="caret"></span>
+		  	</button>
+
+			<ul class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdownMenu1">
+		    	<apex:repeat value="{!filterOptions}" var="lvw">
+		    	<li>
+					<apex:commandLink action="{!changeFilter}" value="{!lvw.label}" status="status" reRender="vars, pageInfo, playTable, titleStats, messages, headerDropdown, statsTotal, statsAvailable, statsPipeline, playTypeGraphFilter, playGraphFilter, allGraphs, allGraphs2, statsOpen, statsInProgress, statsExpired, statsDisqualified, statsErrors, statsSuppressed, statsConversion, statsTimeToConversion, graphUpdated, graphUpdated2, rankFilter, byRankTable" oncomplete="resetTableColumns();resetPlayDropdown();">
+						<apex:param value="{!lvw.value}" name="theListview" assignTo="{!selectedFilterDays}" />
+					</apex:commandLink>
+				</li>
+		    	</apex:repeat>
+		  	</ul>
+		</div>
+
+        <apex:outputPanel layout="block" styleClass="dropdown pull-right" id="playGraphFilter">
+        	<select id="playFilter" class="selectpicker" data-live-search="true" title="New Filter Here">
+                <apex:repeat value="{!plays}" var="play">
+                	<option value="{!play.label}">
+                		<apex:outputText value="{!play.label}" />
+                	</option>
+                </apex:repeat>
+            </select>
+        </apex:outputPanel>
+
+        <apex:outputPanel layout="block" styleClass="dropdown margin-right" id="playTypeGraphFilter">
+        	<button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+            	<apex:outputText value="{!selectedPlayTypeName}" />
+            	<span class="caret"></span>
+          	</button>
+          		<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+	          		<apex:repeat value="{!playTypes}" var="playType">
+			    	<li>
+						<apex:commandLink action="{!filterCharts}" value="{!playType.label}" status="status" reRender="vars, pageInfo, playTable, titleStats, messages, headerDropdown, statsTotal, statsAvailable, statsPipeline, playTypeGraphFilter, playGraphFilter, allGraphs, allGraphs2, statsOpen, statsInProgress, statsExpired, statsDisqualified, statsErrors, statsSuppressed, statsConversion, statsTimeToConversion, graphUpdated, graphUpdated2, rankFilter, byRankTable" oncomplete="resetTableColumns();resetPlayDropdown();">
+							<apex:param value="{!playType.label}" name="selectedPlayTypeName" assignTo="{!selectedPlayTypeName}" />
+							<apex:param value="{!playType.value}" name="selectedPlayTypeID" assignTo="{!selectedPlayTypeId}" />
+						</apex:commandLink>
+					</li>
+			    	</apex:repeat>
+          		</ul>
+		</apex:outputPanel>
+    </div>
+
+
+</div>
+
+<div class="dashboard">
+
+<apex:pageMessages id="messages" />
+
+<apex:outputPanel layout="none" id="poller">
+	<apex:actionPoller action="{!checkForJobDone}" reRender="poller" interval="5" rendered="{!showRefreshedLabel}" />
+
+	<apex:actionPoller action="{!refreshChartsDoneCleanup}" reRender="vars, renderedLabel2, renderedLabel, poller, pageInfo, playTable, titleStats, messages, headerDropdown, statsTotal, statsAvailable, statsPipeline, playTypeGraphFilter, playGraphFilter, allGraphs, allGraphs2, statsOpen, statsInProgress, statsExpired, statsDisqualified, statsErrors, statsSuppressed, statsConversion, statsTimeToConversion, graphUpdated, graphUpdated2, rankFilter, byRankTable" interval="5" rendered="{!refreshChartsDone && !showRefreshedLabel}" oncomplete="resetPlayDropdown();" />
+
+</apex:outputPanel>
+
+<div class="row">
+
+	<nav class="col-md-12 dashboard-nav">
+	<ul>
+		<li id="totalNav" class="active" onclick="activateTab('total')">
+		 	<h3>
+		  		<apex:outputText value="{0, number, #,###,###}" id="statsTotal">
+		  			<apex:param value="{!total}" />
+		  		</apex:outputText>
+		  		<span class="subtitle">
+		  			<apex:outputText value="{!$Label.lbi__lab_total}" />
+		  		</span>
+		  	</h3>
+		  	<span class="icon first glyphicon-sf-dashboard-total"></span>
+		</li>
+	  	<li id="availableNav" onclick="activateTab('available')">
+      		<h3>
+		  		<apex:outputText value="{0, number, #,###,###}" id="statsAvailable">
+      				<apex:param value="{!available}" />
+      			</apex:outputText>
+      			<span class="subtitle">
+      				<apex:outputText value="{!$Label.lbi__dsh_targeted}" />
+      			</span>
+      		</h3>
+      		<span class="icon glyphicon-sf-dashboard-available"></span>
+	  	</li>
+	  	<li id="pipelineNav" onclick="activateTab('pipeline')">
+      		<h3>
+		  		<apex:outputText value="{0, number, #,###,###}" id="statsPipeline">
+      				<apex:param value="{!pipeline}" />
+      			</apex:outputText>
+      			<span class="subtitle">
+      				<apex:outputText value="{!$Label.lbi__lab_pipeline}" />
+      			</span>
+      		</h3>
+      		<span class="icon glyphicon-sf-dashboard-pipeline"></span>
+	  	</li>
+	</ul>
+	</nav>
+</div>
+
+<div class="row">
+	<ul class="col-md-4 available-data">
+		<li class="col-md-3">
+        	<span>
+        		<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Errors__c.label}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###}" id="statsErrors">
+	  			<apex:param value="{!errors}" />
+	  		</apex:outputText>
+     	</li>
+     	<li class="col-md-3">
+        	<span>
+        		<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Suppressed__c.label}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###}" id="statsSuppressed">
+	  			<apex:param value="{!supressed}" />
+	  		</apex:outputText>
+     	</li>
+      	<li class="col-md-3">
+        	<span>
+        		<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Expired__c.label}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###}" id="statsExpired">
+	  			<apex:param value="{!expired}" />
+	  		</apex:outputText>
+     	</li>
+      	<li class="col-md-3">
+        	<span>
+        		<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Disqualified__c.label}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###}" id="statsDisqualified">
+	  			<apex:param value="{!disqualified}" />
+	  		</apex:outputText>
+      	</li>
+    </ul>
+    <ul class="col-md-4 available-data">
+      	<li class="col-md-6">
+        	<span>
+        		<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Open__c.label}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###}" id="statsOpen">
+	  			<apex:param value="{!open}" />
+	  		</apex:outputText>
+      	</li>
+      	<li class="col-md-6">
+        	<span>
+        		<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__InProgress__c.label}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###}" id="statsInProgress">
+	  			<apex:param value="{!inProgress}" />
+	  		</apex:outputText>
+      	</li>
+    </ul>
+    <ul class="col-md-4 available-data">
+      	<li class="col-md-6">
+        	<span>
+        		<apex:outputText value="{!$Label.lbi__dsh_conversionrate}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #.##%}" id="statsConversion">
+	  			<apex:param value="{!avgConversionRate}" />
+	  		</apex:outputText>
+      	</li>
+      	<li class="col-md-6">
+        	<span>
+        		<apex:outputText value="{!$Label.lbi__dsh_timetoconversion}" />
+        	</span>
+        	<apex:outputText styleClass="data-number" value="{0, number, #,###,###} {!$Label.lbi__lab_days}" id="statsTimeToConversion">
+	  			<apex:param value="{!avgTimeToConversion}" />
+	  		</apex:outputText>
+      	</li>
+    </ul>
+
+</div>
+
+<div class="row" id="totalPanel">
+
+    <div class="col-md-12">
+
+	<h4 class="table-title">
+		<apex:outputText value="{!$Label.lbi__dsh_dashboardcount}" escape="false" id="titleStats">
+			<apex:param value="{!totalRecords}" />
+			<apex:param value="{!total}" />
+		</apex:outputText>
+	</h4>
+
+	<apex:outputPanel layout="block" styleClass="row" id="playTable">
+		<table class="table">
+			<thead>
+			    <tr>
+					<th class="sortableCol" data-sortColumn="PlayName__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__PlayName__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'PlayName__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="PlayTypeName__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__PlayTypeName__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'PlayTypeName__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="RunDate__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__RunDate__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'RunDate__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Total__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Total__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Total__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Suppressed__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Suppressed__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Suppressed__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Errors__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Errors__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Errors__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Disqualified__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Disqualified__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Disqualified__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Expired__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Expired__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Expired__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Open__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Open__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Open__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="InProgress__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__InProgress__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'InProgress__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+					<th class="sortableCol" data-sortColumn="Qualified__c">
+						<apex:outputText value="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Qualified__c.label}" />
+						<apex:outputPanel layout="none" rendered="{!sortField == 'Qualified__c'}">
+							<span class="order-{!IF(sortOrder == 'DESC','down','up')} glyphicon-sf-pagination-back"/>
+						</apex:outputPanel>
+					</th>
+			    </tr>
+			</thead>
+		  <tbody>
+				<apex:repeat value="{!pageRecords}" var="record">
+					<tr>
+						<th scope="row">
+							<apex:outputField value="{!record.LBI__PlayName__c}" />
+						</th>
+						<td style="max-width: 300px;">
+							<apex:outputField value="{!record.LBI__PlayTypeName__c}" />
+						</td>
+						<td>
+							<c:FormattedDateTime datetimeValue="{!record.LBI__RunDate__c}" datetimeFormat="MM/dd/yyyy" />
+						</td>
+						<!-- TAL:  Should we be using outputField here to allow for localization? -->
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Total__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Suppressed__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Errors__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Disqualified__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Expired__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Open__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__InProgress__c}" />
+							</apex:outputText></td>
+						<td><apex:outputText value="{0, number, #,###,###}">
+								<apex:param value="{!record.LBI__Qualified__c}" />
+							</apex:outputText></td>
+			    	</tr>
+		  		</apex:repeat>
+		  	</tbody>
+		</table>
+	</apex:outputPanel>
+
+	<apex:outputPanel layout="block" styleClass="row" id="pageInfo">
+		<apex:outputPanel layout="none" rendered="{!totalRecords > 0}">
+		<div class="col-md-4">
+	    	<p class="showing"><apex:outputText value="{!$Label.lbi__lab_recordcounter}">
+	    			<apex:param value="{!firstRecordShowing}" />
+	    			<apex:param value="{!lastRecordShowing}" />
+	    			<apex:param value="{!totalRecords}" />
+	    		</apex:outputText>
+	    	</p>
+	  	</div>
+	  	<div class="col-md-4"></div>
+	  	<div class="col-md-4">
+	    	<nav>
+	    		<ul class="pagination-new">
+			        <li>
+			        	<apex:commandLink action="{!goToPreviousPage}" styleClass="{!IF(!pageNumberBar.showPrevious,'disabled','')} glyphicon-sf-pagination-back" reRender="pageInfo, playTable, messages" oncomplete="resetTableColumns();"/>
+			        </li>
+
+					<apex:outputPanel layout="none" rendered="{!pageNumberBar.showFirstEllipsis}">
+						<li>
+							<apex:commandLink action="{!goToPage}" value="1" reRender="pageInfo, playTable, messages" oncomplete="resetTableColumns();">
+								<apex:param value="1" name="thePageNumber" assignTo="{!currentPageNumber}" />
+							</apex:commandLink>
+						</li>
+		        		<li><a class="disabled" href="#">...</a></li>
+					</apex:outputPanel>
+			  		<apex:repeat value="{!pageNumberBar.visiblePageNumbers}" var="pageNumber">
+			  			<li>
+			  				<apex:commandLink action="{!goToPage}" value="{!pageNumber}" reRender="pageInfo, playTable, messages" rendered="{!pageNumber != pageNumberBar.pageNumber}" oncomplete="resetTableColumns();">
+								<apex:param value="{!pageNumber}" name="thePageNumber" assignTo="{!currentPageNumber}" />
+							</apex:commandLink>
+							<apex:outputPanel layout="none" rendered="{!pageNumber == pageNumberBar.pageNumber}"><a class="active" href="#">{!pageNumber}</a></apex:outputPanel>
+			  			</li>
+			  		</apex:repeat>
+		        	<apex:outputPanel layout="none" rendered="{!pageNumberBar.showLastEllipsis}">
+		        		<li><a class="disabled" href="#">...</a></li>
+						<li>
+							<apex:commandLink action="{!goToPage}" value="{!pageNumberBar.totalPages}" reRender="pageInfo, playTable, messages" oncomplete="resetTableColumns();">
+								<apex:param value="{!pageNumberBar.totalPages}" name="thePageNumber" assignTo="{!currentPageNumber}" />
+							</apex:commandLink>
+						</li>
+					</apex:outputPanel>
+		        	<li>
+		        		<apex:commandLink action="{!goToNextPage}" styleClass="{!IF(!pageNumberBar.showNext,'disabled','')} glyphicon-sf-pagination-forward" reRender="pageInfo, playTable,  messages"  oncomplete="resetTableColumns();"/>
+		        	</li>
+	    		</ul>
+	    	</nav>
+	  	</div>
+		</apex:outputPanel>
+	</apex:outputPanel>
+
+    </div>
+
+</div>
+
+
+<div id="availablePanel" style="display: none">
+
+		<div class="col-md-12">
+
+		    <apex:outputPanel styleClass="refresh-actions" layout="block" id="renderedLabel">
+		    	<h4 class="table-title">
+		    		<apex:outputText value="{!$Label.lbi__dsh_recommendationprogression}" />
+		    	</h4>
+
+		    	<apex:commandButton styleClass="btn-default pull-right" value="{!$Label.lbi__dsh_refreshnow}" onclick="refreshStats();" action="{!refreshChartData}" reRender="renderedLabel, poller" />
+
+			    <apex:outputPanel styleClass="last-update pull-right" layout="inline" id="graphUpdated">
+			    	<apex:outputPanel layout="none" rendered="{!chartDataLastSuccess != null}">
+			    		<apex:outputText value="{!$Label.lbi__dsh_lastupdatedon}:" />&nbsp;
+			    		<c:FormattedDateTime datetimeValue="{!chartDataLastSuccess}" />
+			    		<!-- datetimeFormat="MM/dd/yyyy hh:mm a" -->
+			    	</apex:outputPanel>
+			    </apex:outputPanel>
+
+			    <apex:outputText styleClass="alert alert-success center-block" value="{!$Label.lbi__dsh_refreshstarted}" rendered="{!showRefreshedLabel}" />
+
+		    </apex:outputPanel>
+
+            <hr class="refresh" />
+
+		</div>
+
+    <apex:outputPanel layout="block" styleClass="row graphs" id="allGraphs">
+		<div class="col-md-6">
+			<p>
+				<apex:outputText value="{!$Label.lbi__dsh_untouchedqualityage}" />
+			</p>
+			<div class="graph-container">
+			 	<analytics:reportChart cacheResults="false" filter="{!chartFilter}" developername="{!UntouchedRecommendationsByQualityAge}"></analytics:reportChart>
+			</div>
+		</div>
+
+		<apex:outputPanel layout="block" styleClass="col-md-6" id="untouchedGraph">
+			<p><apex:outputText value="{!$Label.lbi__dhs_untouchedqualityovertime}" >
+				<apex:param value="{!selectedFilterLabel}" />
+			</apex:outputText></p>
+			<div class="graph-container">
+        		<analytics:reportChart cacheResults="false" filter="{!chartFilterUntouched}" developername="{!UntouchedRecommendationsOverTime}">
+        		</analytics:reportChart>
+
+	    	</div>
+	    </apex:outputPanel>
+
+	    <div class="col-md-6">
+	        <p>
+	        	<apex:outputText value="{!$Label.lbi__dsh_recommendationqualitystage}" />
+	        </p>
+	        <div class="graph-container">
+	        	<analytics:reportChart cacheResults="false" filter="{!chartFilter}" developername="{!RecommendationsQualityAndStage}"></analytics:reportChart>
+	        </div>
+	    </div>
+
+	    <apex:outputPanel layout="block" styleClass="col-md-6" id="byStageGraph">
+	        <p><apex:outputText value="{!$Label.lbi__dsh_recommendationovertime}" >
+				<apex:param value="{!selectedFilterLabel}" />
+			</apex:outputText></p>
+	        <div class="graph-container">
+	         	<analytics:reportChart cacheResults="false" filter="{!chartFilterByStage}" developername="{!RecommendationsByStageOverTime}">
+	         	</analytics:reportChart>
+	        </div>
+	    </apex:outputPanel>
+
+	</apex:outputPanel>
+</div>
+
+<div id="pipelinePanel" style="display: none">
+	<div class="row">
+		<div class="col-md-12">
+
+		    <apex:outputPanel styleClass="refresh-actions" layout="block" id="renderedLabel2">
+		    	<h4 class="table-title">
+		    		<apex:outputText value="{!$Label.lbi__dsh_reviewimpact}" />
+		    	</h4>
+
+		    	<apex:commandButton styleClass="btn-default pull-right" value="{!$Label.lbi__dsh_refreshnow}" onclick="refreshStats();" action="{!refreshChartData}" reRender="renderedLabel2, poller" />
+
+			    <apex:outputPanel styleClass="last-update center-block" layout="inline" id="graphUpdated2">
+			    	<apex:outputPanel layout="none" rendered="{!chartDataLastSuccess != null}">
+			    		<apex:outputText value="{!$Label.lbi__dsh_lastupdatedon}:" /> &nbsp;
+			    		<c:FormattedDateTime datetimeValue="{!chartDataLastSuccess}" />
+			    		<!-- datetimeFormat="MM/dd/yyyy hh:mm a" -->
+			    	</apex:outputPanel>
+			    </apex:outputPanel>
+
+			    <apex:outputText styleClass="alert alert-success" value="{!$Label.lbi__dsh_refreshstarted}" rendered="{!showRefreshedLabel}" />
+
+		    </apex:outputPanel>
+
+            <hr class="refresh" />
+
+		</div>
+	</div>
+
+		<div class="row">
+
+			<apex:outputPanel layout="block" styleClass="col-md-12" id="stageFilter">
+				<select multiple="multiple" id="statusFilter">
+					<apex:repeat value="{!opportunityStages}" var="stage">
+						<apex:outputPanel layout="none" rendered="{!stage.selected}">
+							<option selected="true" value="{!stage.stageName}">
+								<apex:outputText value="{!stage.stageName}" />
+							</option>
+						</apex:outputPanel>
+						<apex:outputPanel layout="none" rendered="{!! stage.selected}">
+							<option value="{!stage.stageName}">
+								<apex:outputText value="{!stage.stageName}" />
+							</option>
+						</apex:outputPanel>
+					</apex:repeat>
+				</select>
+			</apex:outputPanel>
+
+		</div>
+
+    <apex:outputPanel layout="block" styleClass="row graphs" id="allGraphs2">
+
+    	<apex:outputPanel layout="block" rendered="{!pipeline = 0}" styleClass="no-pipeline">
+				<apex:outputText value="{!$Label.lbi__dsh_nopipeline}">
+					<apex:param value="{!selectedFilterLabel}" />
+				</apex:outputText>
+    	</apex:outputPanel>
+
+    	<div class="col-md-6">
+        	<p>
+        		<apex:outputText value="{!$Label.lbi__dsh_conversionpercentagebyrank}" />
+        	</p>
+        	<div class="graph-container">
+          		<analytics:reportChart cacheResults="false" filter="{!opportunityChartFilter}" developername="{!ConversionPercentageByRank}" >
+	         	</analytics:reportChart>
+      		</div>
+      	</div>
+      	<div class="col-md-6">
+        	<p>
+        		<apex:outputText value="{!$Label.lbi__dsh_pipelineamountbyrank}" />
+        	</p>
+        	<div class="graph-container">
+          		<analytics:reportChart cacheResults="false" filter="{!opportunityChartFilter}" developername="{!PipelineAmountbyRank}">
+	         	</analytics:reportChart>
+      		</div>
+      	</div>
+		<div class="col-md-12">
+			<p>
+				<apex:outputText value="{!$Label.lbi__dsh_top10deals}" />
+			</p>&nbsp;
+	        <apex:outputPanel layout="block" styleClass="dropdown" id="rankFilter">
+	        	<button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+	            	<apex:outputText value="{!selectedRankName}" />
+	            	<span class="caret"></span>
+	          	</button>
+	        	<ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
+	        		<apex:repeat value="{!ranks}" var="rank">
+			    	<li>
+						<apex:commandLink action="{!refreshTop10List}" value="{!rank.label}" reRender="messages, rankFilter, byRankTable">
+							<apex:param value="{!rank.value}" name="selectedRank" assignTo="{!selectedRankID}" />
+							<apex:param value="{!rank.label}" name="selectedRankLabel" assignTo="{!selectedRankName}" />
+						</apex:commandLink>
+					</li>
+			    	</apex:repeat>
+	        	</ul>
+	        </apex:outputPanel>
+			<apex:outputPanel layout="block" styleClass="row" id="byRankTable">
+				<apex:outputText value="{!$Label.lbi__dsh_noopptys}" rendered="{!top10Deals.size = 0}">
+					<apex:param value="{!selectedRankName}" />
+					<apex:param value="{!selectedFilterLabel}" />
+				</apex:outputText>
+				<table class="table">
+					<thead>
+					    <tr>
+					    	<apex:repeat value="{!$ObjectType.LBI__Recommendation__c.fieldsets.LBI__Top10Deals}" var="fld">
+					    		<th>
+					    			<apex:outputText value="{!fld.Label}" />
+					    		</th>
+					    	</apex:repeat>
+					    </tr>
+					</thead>
+				  	<tbody>
+				  		<tr>
+				  			<td colspan="15">
+				  				<apex:outputText value="{!$Label.lbi__dsh_fieldpermission}" escape="false" rendered="{!opptyFieldsDisabled}" />
+				  			</td>
+				  		</tr>
+						<apex:repeat value="{!top10Deals}" var="record" rendered="{!! opptyFieldsDisabled}">
+							<tr>
+							<apex:repeat value="{!$ObjectType.LBI__Recommendation__c.fieldsets.LBI__Top10Deals}" var="fld">
+								<td>
+									<apex:outputText value="{!record[fld]}" rendered="{!fld.type != 'currency' && fld.type != 'datetime' && fld.type != 'reference'}" />
+									<apex:outputField value="{!record[fld]}" rendered="{!fld.type == 'reference'}" />
+									<c:FormattedDateTime datetimeValue="{!record[fld]}" datetimeFormat="MM/dd/yyyy" rendered="{!fld.type == 'datetime'}" />
+									<apex:outputText value="{0, number, #,###,###}" rendered="{!fld.type == 'currency'}">
+										<apex:param value="{!record[fld]}" />
+									</apex:outputText>
+								</td>
+							</apex:repeat>
+							</tr>
+				  		</apex:repeat>
+				  	</tbody>
+				</table>
+			</apex:outputPanel>
+		</div>
+    </apex:outputPanel>
+</div>
+
+</div>
+</section>
+
+</apex:form>
+
+<apex:outputpanel >
+    <apex:actionstatus id="status">
+		<apex:facet name="start">
+        	<div class="waitingSearchDiv" id="el_loading" style="background-color: #fbfbfb; height: 100%;opacity:0.65;width:100%;">
+            	<div class="waitingHolder" style="top: 74.2px; width: 91px;">
+                    <img class="waitingImage" src="/img/loading.gif" title="Please Wait..." />
+                    <span class="waitingDescription">
+                    	<apex:outputText value="{!$Label.LAB_Loading}" />
+                    </span>
+                </div>
+            </div>
+        </apex:facet>
+    </apex:actionstatus>
+</apex:outputpanel>
+
+</apex:outputpanel>
+</apex:page>

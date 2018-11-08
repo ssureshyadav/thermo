@@ -1,0 +1,20 @@
+<apex:page sidebar="false" showHeader="false">
+	
+	This page simply posts a message to the parent window and shows when postmessages are posted back to it.
+	
+	<script type="text/javascript" >
+	    window.addEventListener("message", function(msgEvent) { 
+            console.log('child received message!:  ', msgEvent.data);
+            var responseDiv = document.getElementById('responseHolder');
+            responseDiv.innerHTML = 'Received the following from the parent frame:  '+msgEvent.data;
+		}, false);
+		
+	</script>
+	
+	<div id="responseHolder"></div>
+	
+	<script type="text/javascript">
+		parent.postMessage("init", "*");
+	</script>
+
+</apex:page>

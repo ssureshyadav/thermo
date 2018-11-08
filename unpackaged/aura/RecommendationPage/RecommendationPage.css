@@ -1,0 +1,12 @@
+.THIS.no-recommendations {
+	font-size: 16px;
+    margin: 3em auto;
+    max-width: 800px;
+    text-align: center;
+    width: 90%;
+}
+@media (min-width: 84em) {
+	.THIS .rec-card-wrapper {
+    width: 33%;
+	}
+}

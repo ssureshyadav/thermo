@@ -1,0 +1,49 @@
+<aura:component controller="LBI.LCActionLinkController" >
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="recommendations" type="Object[]" />
+
+    <aura:attribute access="public" name="labels" type="Object" />
+    <aura:attribute access="public" name="isMoreInfo" type="Boolean" />
+    <aura:attribute access="public" name="isMoreInfoReq" type="Boolean" />
+    <aura:attribute access="public" name="selectedOpptyID" type="ID" />
+
+    <aura:attribute access="public" name="showDropdown" type="Boolean" />
+    <aura:attribute access="public" name="dropdownObject" type="String" />
+    <aura:attribute access="public" name="dropdownField" type="String" />
+    <aura:attribute access="public" name="whereClause" type="String" />
+
+    <aura:registerEvent name="cancel" type="LBI:ModalCancel"/>
+    <aura:registerEvent name="save" type="LBI:ModalSave"/>
+
+    <aura:handler name="inputChanged" event="LBI:InputValueChanged" action="{!c.handleLookupChange}" includeFacets="true"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <aura:if isTrue="{!v.showDropdown}">
+
+	    <div>
+	    	<LBI:InputLookup label="Opportunity" sObjectAPIName="{!v.dropdownObject}" fieldAPIName="{!v.dropdownField}"
+	    					whereClause="{!v.whereClause}" subtitleField=""
+	    					listIconClass="standard:opportunity" />
+	    </div>
+
+	    <div class="actionButtons">
+	    	<lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelEvent}" />
+			<lightning:button variant="brand" label="Save"  onclick="{!c.handleSaveEvent}" />
+	    </div>
+	    <aura:set attribute="else">
+
+    		<ui:message title="{!v.labels.noOpptyTitle}" severity="error" closable="false">
+      			{!v.labels.noOppty}
+	  		</ui:message>
+
+		    <div class="actionButtons">
+		    	<lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelEvent}" />
+		    </div>
+
+    	</aura:set>
+	</aura:if>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

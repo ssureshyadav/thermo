@@ -1,0 +1,3 @@
+<design:component label="Lattice - Related Recommendations">
+  <design:attribute name="relatedType" label="Type" datasource="Account, Play" />
+</design:component>

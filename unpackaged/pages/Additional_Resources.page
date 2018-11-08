@@ -1,0 +1,34 @@
+<apex:page >
+  <!-- Begin Links -->
+  <div class="slds-text-body_regular" style="{!IF(OR($Profile.name= 'RSD NA Sales Operations User', $Profile.name= 'System Administrator', $Profile.name= 'RSD Sales Operations Administrator') , 'display:block', 'display:none')}" >  
+  <p style="font-size:14px">
+  Service Now- Log an Incident
+   <ul style="{!IF(OR($Profile.name= 'RSD NA Sales Operations User', $Profile.name= 'System Administrator', $Profile.name= 'RSD Sales Operations Administrator'), 'font-size:12px', 'font-size: 14px')}"> 
+      <li> <a href="https://thermofisherit.service-now.com/ess/create_incident.do?sysparm_ci=SalesForce.com%20%20SFDC%20(CCG) ">Create an Incident</a></li>
+  </ul>    
+    </p>
+    </div>
+  
+ <div class="slds-text-body_regular">
+  <p style="font-size:14px">
+  North America/US Links
+  <ul style="{!IF(OR($Profile.name= 'RSD NA Sales Operations User', $Profile.name= 'System Administrator', $Profile.name= 'RSD Sales Operations Administrator'), 'font-size:12px', 'font-size: 14px')}">
+      <li> <a href="http://org.iconnect.thermofisher.net/sites/rsd/SalesConnect/Pages/default.aspx">SalesConnect</a><br/></li>
+      <li> <a href="http://fisherreports.fishersci.com/acweb/login.jsp">Web-Reporting</a><br/></li>
+      <li> <a href="http://www.fishersci.com/">Fishersci.com</a><br/></li>
+      <li> <a href="https://org.iconnect.thermofisher.net/sites/gbs/gsp/ccg/rmd/Pages/default.aspx">Pricing 360 – Gap Tool – LCA</a><br/></li>
+      <li> <a href="http://10.0.110.131:9080/wccommonservices/">OnDemand system for Invoices and Archived orders</a><br/></li>
+      <li> <a href="http://uspgh-cogweb-p4/cognos/thermo">Cognos - Comprehensive Sales Dashboard</a><br/></li>
+  </ul>    
+    </p>
+    
+  <p style="font-size:14px">
+  Canadian Links
+  <ul style="{!IF(OR($Profile.name= 'RSD NA Sales Operations User', $Profile.name= 'System Administrator', $Profile.name= 'RSD Sales Operations Administrator'), 'font-size:12px', 'font-size: 14px')}">
+      <li> <a href="http://org.iconnect.thermofisher.net/sites/rsd/canada/Pages/default.aspx">iConnect</a><br/></li>
+      <li> <a href="http://www.fishersci.ca/">Fishersci.ca</a><br/></li>
+  </ul>    
+    </p>  
+  </div>    
+  <!-- End Links -->
+</apex:page>

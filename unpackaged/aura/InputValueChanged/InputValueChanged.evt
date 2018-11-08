@@ -1,0 +1,6 @@
+<aura:event type="COMPONENT" description="Update Lookup Value" >
+	<!-- the first two attributed will help identify the field that made the change -->
+    <aura:attribute name="sObjectAPIName" type="String" required="true" description="The Name of the field's SObject." />
+    <aura:attribute name="fieldAPIName" type="String" required="true" description="The Name of the field's Field." />
+    <aura:attribute name="sObjectId" type="Id" required="true" description="The Id of the selected SObject." />
+</aura:event>

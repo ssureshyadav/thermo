@@ -1,0 +1,51 @@
+<apex:page sidebar="{!showSidebar}"
+		standardController="LBI__Recommendation__c"
+		extensions="LBI.RecommendationMassActionController"
+		action="{!selectRecommendations}"
+		recordSetVar="Recommendations"
+		id="thePage" >
+
+	<apex:sectionHeader id="theHeader" title="{!$Label.lbi__rep_recommendation}" subtitle="{!$Label.lbi__mass_expire}"/>
+
+	<apex:pagemessages id="pageMessages" />
+
+	<apex:form id="theForm" >
+		<apex:pageBlock id="theBlock" title="{!$Label.lbi__mass_expire_recommendations}" rendered="{!selectedforexpire.size!=0}">
+			<apex:pageMessage summary="{!$Label.lbi__expiredrecommendationconfirmation}" severity="warning" strength="3"/>
+			<br/>
+			<div>
+				<apex:commandButton id="backButton" action="{!back}" value="{!$Label.lbi__mass_back}" style="margin-left:30em;"/>
+				<apex:commandButton id="expireButton" action="{!expireRecommendations}" value="{!$Label.lbi__mass_confirm}" style="margin-left:1em;"/>
+			</div>
+			<br/>
+			<apex:pageBlockTable id="theTable" value="{!selectedforexpire}" var="rec">
+				<apex:column value="{!rec.LBI__DisplayName__c}"/>
+				<apex:column value="{!rec.LBI__Play__c}"/>
+				<apex:column value="{!rec.LBI__Account__c}"/>
+				<apex:column value="{!rec.LBI__Rank__c}"/>
+				<apex:column value="{!rec.LBI__OwnerName__c}"/>
+				<apex:column value="{!rec.LBI__Status__c}"/>
+			</apex:pageBlockTable>
+		</apex:pageBlock>
+		<br/>
+
+		<br/>
+		<apex:pageBlock id="theInnerBlock" title="{!$Label.lbi__rep_ignored_recommendations}" rendered="{!lstnotQualifiedRecommendationsforexpire.size!=0}">
+			<apex:pageMessage summary="{!$Label.lbi__mass_expired_message} ({!lstnotQualifiedRecommendationsforexpire.size})" severity="warning" strength="3"/>
+			<apex:pageBlockTable id="theSecondTable" value="{!lstnotQualifiedRecommendationsforexpire}" var="rec">
+				<apex:column value="{!rec.rec.LBI__DisplayName__c}"/>
+				<apex:column value="{!rec.rec.LBI__Play__c}"/>
+				<apex:column value="{!rec.rec.LBI__Account__c}"/>
+				<apex:column value="{!rec.rec.LBI__Rank__c}"/>
+				<apex:column value="{!rec.rec.LBI__OwnerName__c}"/>
+				<apex:column value="{!rec.rec.LBI__Status__c}"/>
+				<apex:column >
+					<apex:facet name="header">
+						<apex:outputText value="{!$Label.lbi__rep_reason}" />
+					</apex:facet>
+                    <apex:outputText value="{!rec.Reason}" />
+				</apex:column>
+			</apex:pageBlockTable>
+		</apex:pageBlock>
+	</apex:form>
+</apex:page>

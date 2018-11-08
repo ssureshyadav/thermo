@@ -1,0 +1,14 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : 
+    Company     : NTTDATA
+    Date        : 12 June,2017
+    Requirement : W-000180:
+                    T-00353: Dev - Display 'Assigned Territories' list
+    Test Class  : RSDNA_AddUpdateVendorTest
+    Last Updated By : 
+    
+-->
+<aura:event type="APPLICATION">
+    <aura:attribute name="containerGId" type="String" />
+</aura:event>

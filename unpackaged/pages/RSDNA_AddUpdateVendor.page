@@ -1,0 +1,106 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : sanneboinasuresh.yadav@nttdata.com    
+    Company     : NTTDATA
+    Date        : 8 June,2017
+    Requirement : W-000027:T-00350: Dev - Create "Add/Update Vendor" button on Events
+    Description : 
+                  
+    
+-->
+
+<apex:page controller="RSDNA_AddUpdateVendor" docType="html-5.0">
+    <script type="text/javascript">          
+    function noenter(e){               
+        if(window.event){                    
+            key = window.event.keyCode;     //IE               
+        } 
+        else{                    
+            key = e.which;     //firefox               
+        }               
+        if(key == 13) {                    
+            fun();             
+            return false;               
+        } else{                    
+            return true;               
+        }          
+    }     
+</script>
+    <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.min.css')}" />
+        <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+        <div class="BBLDS">
+    <apex:form >
+    <apex:actionFunction name="fun" action="{!getSearchAccounts}" id="dropdown" reRender="sldsTable"/>
+   <div role="dialog" class="slds-modal slds-fade-in-open slds-modal--large">
+  <div class="slds-modal__container">
+    <div class="slds-modal__header">
+      <button class="slds-button slds-modal__close slds-button--icon-inverse" title="Close">
+        <span class="slds-assistive-text">Close</span>
+      </button>
+      <h2 id="header43" class="slds-text-heading--medium">Add/Update Vendor</h2>
+    </div>
+    <div class="slds-modal__content slds-scrollable slds-p-top--small">
+        <div class="slds-p-left--large">
+            Search Account <apex:inputText id="searchtext" value="{!searchText}" onkeypress="return noenter(event)" styleClass="slds-input"/>
+        </div>
+        <div class="slds-p-top--large">
+        <apex:outputPanel id="sldsTable">
+        <table class="slds-table slds-table--bordered slds-table--resizable-cols" role="grid" id="table">
+          <thead>
+             <tr>
+                 <th>Account Name</th>
+                 <th>ERP Number</th>
+                  <th>Billing Street</th>
+                  <th>Billing State</th>
+                  <th>Billing City</th>
+                  <th>Billing Country</th>
+                  <th>Phone</th>
+                  <th>Type</th>
+              </tr>
+          </thead>
+          <tbody>
+            <apex:repeat value="{!lstAccount}" var="a">
+             <tr>
+                   <td>
+                       <apex:commandLink action="{!updateEvent}" value="{!a.Name}">
+                            <apex:param value="{!a.Id}" name="column" assignTo="{!accountId}" ></apex:param>
+                        </apex:commandLink>
+                   </td>
+                    <td>
+                        {!a.ERP_Number__c}
+                    </td>
+                    <td>
+                            {!a.BillingStreet}
+                        </td>
+                    <td>
+                            {!a.BillingState}
+                        </td>
+                    <td>
+                            {!a.BillingCity}
+                        </td>
+                    <td>
+                            {!a.Billingcountry}
+                        </td>
+                    <td>
+                        {!a.Phone}
+                    </td>
+                    <td>
+                        {!a.Type}
+                    </td>
+            </tr>
+            </apex:repeat> 
+          </tbody>
+        </table>
+        </apex:outputPanel>
+        </div>
+    </div>
+    <div class="slds-modal__footer">
+        <apex:commandButton value="Cancel" action="{!btncancel}" styleClass="slds-button slds-button--neutral"/>
+    </div>
+    
+  </div>
+</div>
+<div class="slds-backdrop slds-backdrop--open"></div>
+</apex:form>
+</div>
+</apex:page>

@@ -1,0 +1,916 @@
+<apex:page showHeader="true"
+            sidebar="{!showSidebar}"
+            standardController="Opportunity"
+            extensions="LBI.OpportunityRecommendationListController"
+            tabStyle="Lattice_Opportunities__tab"
+            id="thePage"
+            docType="html-5.0"
+            standardStylesheets="true" 
+			title="{!$Label.lbi__title_opportunity_recommendation}">
+
+	<apex:includeScript value="/support/console/37.0/integration.js"/>
+	<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+	<apex:includeScript value="{!URLFOR($Resource.LBI__RecommendationListJavascript)}" />
+	<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+	<apex:includeScript value="{!URLFOR($Resource.LBI__BootstrapResponsiveTabs, 'bootstrap-responsive-tabs/bootstrap-responsive-tabs.js')}"  />
+	<apex:includeScript value="{!URLFOR($Resource.LBI__mixpanel_js)}"  />
+
+	<apex:stylesheet value="{!URLFOR($Resource.LBI__BootstrapResponsiveTabs, 'bootstrap-responsive-tabs/bootstrap-responsive-tabs.css')}"/>
+	<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+
+	<script type="text/javascript" >
+        var theEnhancedList = null;
+        var buttonPressed = false;
+        var typeOfFirstSelectedCard = null;
+
+        var mpOldTabName = "{!iFrameSettings.defaultTab}".replace(/([a-z])([A-Z])/g, '$1 $2');
+        var mpOldTopLevelTabName;
+
+        var mpBasicReturnObject = {
+        	"Page" : "{!$CurrentPage.Name}",
+        	"OrgID" : "{!$Organization.Id}",
+        	"CustomerID" : hashCode("{!$User.Id}"),
+        	"Product Name" : "BIS"
+        };
+
+        var mixpanelModule = new MixPanelModule(lejQuery, mpBasicReturnObject, mpOldTabName, {
+        		!isEnabledMixPanel
+        	}, mpOldTopLevelTabName, mixPanelShouldTrackActionCallback);
+
+        var isInSalesConsole = isInSalesConsole();
+
+        lejQuery(window).ready(function () {
+        	doOnComplete();
+        	enableDisableSaveButton(false);
+
+        	mixpanelModule.sendMpMessage("Page Load");
+        	setIsInSalesConsole(isInSalesConsole);
+        });
+
+        lejQuery(document).ready(function () {
+        	if (sforce.console) {
+        		sforce.console.setTabTitle('{!JSINHTMLENCODE(selectedRecommendation.DisplayName__c)}');
+        	}
+        });
+
+        window.onbeforeunload = function (arg) {
+        	mixpanelModule.sendMpPageDurationMessage("Page Unload");
+        }
+
+        function toggleClass(element, className) {
+        	if (!element || !className) {
+        		return;
+        	}
+
+        	var classString = element.className,
+        	nameIndex = classString.indexOf(className);
+        	if (nameIndex == -1) {
+        		classString += ' ' + className;
+        	} else {
+        		classString = classString.substr(0, nameIndex) + classString.substr(nameIndex + className.length);
+        	}
+        	element.className = classString;
+        }
+
+        function buttonsEnabled(enable) {
+        	var $buttons = jQuery('.btn'); // find all buttons in the page
+        	if (enable === false) {
+        		$buttons.toggleClass('btnDisabled', true).attr('disabled', 'disabled');
+        	} else {
+        		$buttons.toggleClass('btnDisabled', false).attr('disabled', null);
+        	}
+        }
+
+        function buildURL(listRecordId) {
+        	return '<a class="chevron glyphicon-sf-view" id="chevron_' + listRecordId + '" onclick="selectNewOpportunity(\'' + listRecordId + '\');"></a>';
+        }
+
+        var hasPageNumSpecified = {
+        	!hasPageNumSpecified
+        };
+
+        // Timeout is required here to make jQuery happen after ExtJS happens
+        function fixListView() {
+
+        	if (hasPageNumSpecified) {
+        		// Navigate to the required page if it's not the same one we're on now
+        		if (lejQuery("[id$='accountPageNumber']").val() != lejQuery('input.pageInput').val()) {
+        			Paginator.instances['thePage:theAccountList_paginator'].goToPage({
+        				!accountPageNumber
+        			});
+        		}
+        		hasPageNumSpecified = false;
+        	}
+
+        	if (theEnhancedList) {
+        		theEnhancedList.grid.store.each(function (r) {
+
+        			// get the value from the record id field
+        			var recordId = r.id;
+        			//var accountName = r.get('ACCOUNT.NAME')[1];
+
+        			// create the anchor tag
+        			var newAnchor = buildURL(recordId);
+
+        			// the action column is an array type
+        			r.set('ACTION_COLUMN', [newAnchor]);
+
+        			// clear the dirty flag on the cell
+        			r.commit();
+        		});
+
+        		// This copies the current pagenumber over to a VF binding so we can properly build urls
+        		lejQuery("[id$='accountPageNumber']").val(lejQuery('input.pageInput').val());
+        	}
+
+        	// Don't hide this if you need the 'X Selected' component
+        	//lejQuery('span[id$="theAccountList_paginator_selection_target"]').hide();
+
+        	if (lejQuery('a.chevron').length > 0) {
+        		if ({
+        			!returningToPage
+        		}
+        			 == false) {
+        			lejQuery('a.chevron')[0].click();
+        		} else {
+        			lejQuery('a#chevron_{!LEFT(selectedOpportunity.AccountId, 15)}').closest('tr').addClass('selectedChevron');
+        		}
+        	} else {
+        		clearLowerSection();
+        	}
+        }
+
+        function clearLowerSection() {
+        	lejQuery('section.content-main').hide();
+        }
+
+        function modifyEnhancedList(el) {
+
+        	// the list itself and the columnModel within it
+        	theEnhancedList = el;
+
+        	var actionColIndex = theEnhancedList.grid.colModel.getIndexById('ACTION_COLUMN');
+
+        	// Rename the Action column header
+        	theEnhancedList.grid.colModel.setColumnHeader(actionColIndex, 'Lattice');
+        	theEnhancedList.grid.colModel.setColumnWidth(actionColIndex, 50);
+
+        	// hide the checkbox column if necessary
+        	//theEnhancedList.grid.colModel.setHidden(0, true);
+
+        	// delay if the grid is using late rendering so the grid.store has data in it
+        	if (theEnhancedList.grid.deferRowRender) {
+        		setTimeout(fixListView, 1);
+        	} else {
+        		fixListView();
+        	}
+
+        }
+
+        function selectNewOpportunity(thisId) {
+        	lejQuery('#suppInfoContentDiv').hide();
+        	lejQuery('section.content-main').show();
+        	lejQuery('a.chevron').closest('tr').removeClass('selectedChevron');
+        	lejQuery('a#chevron_' + thisId).closest('tr').addClass('selectedChevron');
+        	selectNewOpportunityApex(thisId);
+
+        	updateDefaultTopLevelTabName();
+        }
+
+        function updateDefaultTopLevelTabName() {
+        	var recommendationTabTitleName = lejQuery('#recommendationsBulletTopLevel > a > span').text();
+        	if (!recommendationTabTitleName) {
+        		setTimeout(updateDefaultTopLevelTabName, 100);
+        		return;
+        	}
+
+        	mixpanelModule.topLevelTabsDidUpdate(recommendationTabTitleName);
+        }
+
+        // Since the dom is updated each time the account is selected, we need to reattach these
+        // This is called oncomplete from anything that selects an account
+        function attachClickOverridesOnCheckboxes() {
+        	// Prevent the click event on the checkbox from firing the parent click event
+        	lejQuery('input.checkableSFDCId').click(function (event) {
+        		event.stopPropagation();
+        	});
+        }
+
+        function checkIsSelected() {
+        	if (console) {
+        		console.log('Firing Checker');
+        		console.log(theSelectedIds);
+        	}
+
+        	var theSelectedIds = findSelectedRecommendations();
+        	if (theSelectedIds.length == 0) {
+        		injectMustSelectMessage();
+        		return false;
+        	} else {
+        		return true;
+
+        	}
+        }
+
+        function findSelectedRecommendations() {
+        	var returnString = '';
+
+        	lejQuery('input.checkableSFDCId').filter(':checked').each(function () {
+        		returnString += lejQuery(this).attr('sfdcid') + ',';
+        	});
+
+        	// This trims the trailing comma if it exists
+        	returnString = returnString.replace(/,+$/, "");
+
+        	return returnString;
+        }
+
+        function unPressButtons() {
+        	buttonPressed = false;
+        }
+
+        function checkDoubleClick() {
+        	if (console) {
+        		console.log(buttonPressed);
+        	}
+
+        	if (!buttonPressed) {
+        		buttonPressed = true;
+        		return true;
+        	} else {
+        		return false;
+        	}
+        }
+
+        function toggleCardSelect(thisInput) {
+        	if (console) {
+        		console.log(lejQuery(thisInput).prop('checked'));
+        	}
+        	if (lejQuery(thisInput).prop('checked')) {
+        		lejQuery(thisInput).closest('li').addClass('selected');
+        	} else {
+        		lejQuery(thisInput).closest('li').removeClass('selected');
+        	}
+        }
+
+        function processTypeOfSelectedCard(thisInput) {
+        	if (lejQuery(thisInput).prop('checked')) {
+        		if (typeOfFirstSelectedCard == null) {
+        			typeOfFirstSelectedCard = lejQuery(thisInput).attr('workflowtype');
+        			lejQuery('input[id$="typeOfFirstSelectedCard"]').val(typeOfFirstSelectedCard);
+        			shadowOppositeCard();
+        		}
+        	} else {
+        		var size = lejQuery('input.checkableSFDCId:checked').length;
+        		if (size == 0) {
+        			typeOfFirstSelectedCard = null;
+        			lejQuery('input[id$="typeOfFirstSelectedCard"]').val(typeOfFirstSelectedCard);
+        			clearShadowing();
+        		}
+        	}
+        }
+
+        function shadowOppositeCard() {
+        	lejQuery('li[id^="recCard"]').each(function () {
+        		if (lejQuery(this).attr('workflowtype') != typeOfFirstSelectedCard) {
+        			lejQuery(this).addClass('mutedCard');
+        			var input = lejQuery(this).find("input.checkableSFDCId")[0];
+        			lejQuery(input).prop('disabled', true);
+        		}
+        	});
+        }
+
+        function clearShadowing() {
+        	lejQuery('li[id^="recCard"].mutedCard').each(function () {
+        		lejQuery(this).removeClass('mutedCard');
+        		var input = lejQuery(this).find("input.checkableSFDCId")[0];
+        		lejQuery(input).prop('disabled', false);
+        	});
+        }
+
+        function clearValueOfFirstSelectedCard() {
+        	typeOfFirstSelectedCard = null;
+        	lejQuery('input[id$="typeOfFirstSelectedCard"]').val(typeOfFirstSelectedCard);
+        }
+
+        function doOnComplete() {
+        	attachClickOverridesOnCheckboxes();
+        	makeOpportunityClickable({
+        		!isEmbeddedInOpportunity
+        	});
+        	unPressButtons();
+        	attachCheckboxCounter();
+        	clearValueOfFirstSelectedCard();
+        }
+
+        function attachCheckboxCounter() {
+        	lejQuery('input.checkableSFDCId').change(function () {
+        		var size = lejQuery('input.checkableSFDCId:checked').length;
+        		if (console) {
+        			console.log(size);
+        		}
+        		if (size > 0) {
+        			lejQuery("[id$='numSelectedOutputBlock']").hide();
+        			lejQuery('#numSelectedClientSide').html(size + ' Selected');
+        			lejQuery('#numSelectedClientSide').show();
+        		} else {
+        			lejQuery('#numSelectedClientSide').hide();
+        			lejQuery("[id$='numSelectedOutputBlock']").hide();
+        		}
+        	});
+        }
+
+        function hideClientSideSelected() {
+        	lejQuery('#numSelectedClientSide').hide();
+        }
+
+        function enableDisableSaveButton(value) {
+        	var theButton = lejQuery(".confirmButton");
+
+        	if (value) {
+        		lejQuery(theButton).hide();
+        	} else {
+        		lejQuery(theButton).show();
+        	}
+        	//lejQuery(theButton).attr('disabled', value);
+        }
+
+        function mixPanelShouldTrackActionCallback(itemId) {
+
+        	if (itemId == 'converToOppButton' ||
+        		itemId == 'linkToOppButton' ||
+        		itemId == 'disqualifyButtton' ||
+        		itemId == 'emailButton' ||
+        		itemId == 'logButton' ||
+        		itemId == 'taskButton' ||
+        		itemId == 'meetingButton' ||
+        		itemId == 'eventButton') {
+        		return findSelectedRecommendations().length != 0;
+        	}
+
+        	return true;
+        }
+	</script>
+
+	<style type="text/css">
+        .mutedCard {opacity: 0.3;}
+	</style>
+
+	<!-- This shows up when they don't have permissions -->
+	<apex:outputpanel layout="none" rendered="{!!hasPermissionRequired}" >
+		<apex:pageMessages id="noPermissionPageMessages" />
+	</apex:outputpanel>
+
+	<!-- This only renders when they DO have access. -->
+	<apex:outputpanel layout="none" rendered="{!hasPermissionRequired}" >
+
+		<div class="modal" id="spinnerModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" >
+
+		</div>
+
+		<apex:enhancedList type="Opportunity" id="theOppList" height="360" rendered="{!showOpportunityList}" oncomplete="modifyEnhancedList(this);" />
+
+		<section class="content-main" id="bootstrap-lattice">
+			<apex:form id="theForm" >
+
+				<apex:actionFunction name="setIsInSalesConsole" rerender="consoleModeMessage">
+					<apex:param name="param" value="" assignTo="{!isInConsoleMode}" />
+				</apex:actionFunction>
+
+				<div class="container-fluid">
+
+					<apex:inputHidden value="{!accountPageNumber}" id="accountPageNumber"/>
+					<apex:inputHidden value="{!typeOfFirstSelectedCard}" id="typeOfFirstSelectedCard"/>
+
+					<!-- DETAILS SECTION -->
+
+					<apex:outputPanel id="recommendationDetailsPanel" layout="block" rendered="{!showRecommendationSection}" styleClass="lattice-details {!IF(isEmbeddedInOpportunity, 'embedded-container', 'nothing')}" >
+
+
+
+						<div class="row">
+
+							<div class="col-md-12">
+								<a class="btn btn-default back" title="{!$Label.lbi__rep_back_btn}" onClick="returnToOpportunity();" id="backToRecommendationsListButton">
+									<span class="glyphicon-sf-pagination-back"></span>
+									<apex:outputText value="{!$Label.lbi__rep_back_btn}"/>
+								</a>
+
+								<div class="actions-toggle pull-right">
+
+									<div id="openmenu">
+										<label class="open-menu" for="menu-toggle" onclick="toggleClass(this,'close-menu', 500, 'easeOut');">
+											<apex:outputText value="{!$Label.lbi__bsd_actionsheader}" />
+										</label>
+									</div>
+
+									<input type="checkbox" id="menu-toggle"/>
+									<ul id="menu">
+
+
+
+									</ul>
+								</div>
+							</div>
+
+							<div class="col-md-12">
+								<apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+									<a class="prism pull-right" href="#" rendered="{!renderViewInSalesPrism}" onClick="return openSalesPrismURL('{!PrismURLAccount}');" target="{!actionLinkTarget}">
+										<apex:outputText value="{!$Label.lbi__rep_sales_prism}" />
+									</a>
+								</apex:outputPanel>
+							</div>
+
+							<div class="col-md-12">
+								<apex:pageMessages id="recomPageMessages"/>
+							</div>
+
+							<div class="col-md-12">
+
+								<div class="rec-details-container">
+
+									<h3 class="rec-display-name" title="{!selectedRecommendation.LBI__DisplayName__c}">
+										<span class="icon rec-title glyphicon-sf-{!selectedRecommendation.PlayTypeNameClass__c}"></span>
+										<apex:outputField value="{!selectedRecommendation.LBI__DisplayName__c}" />
+										<!--<em class="new">New</em>-->
+									</h3>
+
+									<div class="account-details">
+
+										<p class="description">
+											<apex:outputField value="{!selectedRecommendation.LBI__Description__c}" />
+										</p>
+
+										<ul class="highlights">
+											<apex:outputPanel layout="none" rendered="{!showRevenue}">
+												<li id="revenue-hide">
+													<apex:outputText value="{!$Label.lbi__rep_estimated_revenue}" /> &nbsp;
+													<em class="revenue">
+														<apex:outputField value="{!selectedRecommendation.LBI__MonetaryValue__c}" />
+													</em>
+												</li>
+											</apex:outputPanel>
+
+											<li>
+												<apex:outputText value="{!$Label.lbi__rep_daysactive}" />
+												<em class="created">
+													<apex:outputField value="{!selectedRecommendation.LBI__AgeInDays__c}" />
+												</em>
+											</li>
+
+											<li>
+												<apex:outputText value="{!$Label.lbi__rep_status}" /> &nbsp;
+												<em class="created">
+													<apex:outputField value="{!selectedRecommendation.LBI__Status__c}" />
+												</em>
+											</li>
+										</ul>
+
+										<div class="rating-rank">
+											<apex:outputPanel layout="inline" rendered="{!!showScore}" id="noScoreTab">
+
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'A'}" >
+													<div class="progress-radial progress-100">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'B'}" >
+													<div class="progress-radial progress-75">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'C'}" >
+													<div class="progress-radial progress-50">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'D'}" >
+													<div class="progress-radial progress-25">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+													</div>
+												</apex:outputPanel>
+
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGHEST'}" >
+													<div class="progress-radial progress-100">
+														<div class="overlay condensed"><apex:outputText value="HIGHEST" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGH'}" >
+													<div class="progress-radial progress-75">
+														<div class="overlay condensed"><apex:outputText value="HIGH" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'MEDIUM'}" >
+													<div class="progress-radial progress-50">
+														<div class="overlay condensed"><apex:outputText value="MEDIUM" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'LOW'}" >
+													<div class="progress-radial progress-25">
+														<div class="overlay condensed"><apex:outputText value="LOW" /></div>
+													</div>
+												</apex:outputPanel>
+
+											</apex:outputPanel>
+
+											<apex:outputPanel layout="inline" rendered="{!showScore}" id="scoreTab">
+
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'A'}" >
+													<div class="progress-radial progress-100">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'B'}" >
+													<div class="progress-radial progress-75">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'C'}" >
+													<div class="progress-radial progress-50">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'D'}" >
+													<div class="progress-radial progress-25">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGHEST'}" >
+													<div class="progress-radial progress-100">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGH'}" >
+													<div class="progress-radial progress-75">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'MEDIUM'}" >
+													<div class="progress-radial progress-50">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+												<apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'LOW'}" >
+													<div class="progress-radial progress-25">
+														<div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+													</div>
+												</apex:outputPanel>
+
+											</apex:outputPanel>
+										</div>
+
+									</div>
+								</div>
+
+							</div>
+
+						</div>
+
+						<div class="row">
+
+                            <div class="col-md-12">
+                                <c:TabMenuComponent id="tabMenuComponentInRec"
+                                    showBuyingSignals="{!showBuyingSignals}"
+                                    showTalkingPoints="true"
+                                    showPurchaseHistory="{!showPurchaseHistory}"
+                                    showCompanyProfile="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}"
+                                    isSuppInfoEnabled="{!isSuppInfoEnabled}"
+                                    isAtRecLevel="true"
+                                    recommendationPlayId="{!selectedRecommendation.LBI__Play__c}" />
+                            </div>
+
+							<apex:outputPanel layout="none" rendered="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}">
+								<apex:outputPanel id="companyProfileTabContents" layout="block" styleClass="company-profile-holder" style="display:none;">
+									<c:CompanyProfileOutput id="companyProfileOutput" parentAcctExtId="{!selectedRecommendation.LBI__AccountExtension__c}" />
+								</apex:outputPanel>
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!isSuppInfoEnabled}">
+								<apex:outputPanel id="suppInfoTable" layout="block" styleClass="suppInfoHolder" style="display:none;" >
+									<c:SupplementalInfoList id="supplementalInfoList" isSF1Boolean="{!isSF1}" parentAcctId="{!selectedRecommendation.LBI__Account__c}" supplementalInfoRecord="{!selectedSupplementalInfo}" />
+								</apex:outputPanel>
+							</apex:outputPanel>
+
+							<apex:outputPanel id="iFrameHolder" layout="block" styleClass="col-md-12 iFrameHolder" >
+								<iframe src="{!IFrameSource}" scrolling="no" id="theIFrame" html-iframeselector="iframeselector" width="100%" height="140px" />
+							</apex:outputPanel>
+
+						</div>
+
+					</apex:outputPanel>
+
+					<!-- LISTING SECTION -->
+
+					<apex:outputPanel id="accountDetailsPanel" rendered="{!showAccountSection}" layout="block" styleClass="lattice-details {!IF(isEmbeddedInOpportunity, 'embedded-container', 'nothing')}">
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <c:TabMenuComponent id="tabMenuComponentInDetails"
+                                    topLevel="true"
+                                    showLogoImg="true"
+                                    showTopLevelRec="true"
+                                    showPurchaseHistory="{!showPurchaseHistory}"
+                                    showCompanyProfile="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}"
+                                    isSuppInfoEnabled="{!isSuppInfoEnabled}"
+                                    isAtRecLevel="false" />
+                                <apex:pageMessages id="accountPageMessages" />
+                            </div>
+                        </div>
+
+						<div id="recommendationCardsContainer">
+
+							<div class="row listing-details">
+
+								<div class="col-md-4">
+									<div class="pagination">
+										<apex:outputPanel layout="inline" styleClass="pages" rendered="{!totalRecommendationCount > 1 && totalRecommendationCount <= perPageSize}}">
+												<apex:outputText value="{!totalRecommendationCount} Recommendation" />
+												<apex:outputText rendered="{!totalRecommendationCount > 1}" value="s" />
+												</apex:outputPanel>
+
+												<apex:outputPanel layout="inline" styleClass="pagination-arrows" rendered="{!totalRecommendationCount > perPageSize}">
+													<apex:outputPanel layout="none" rendered="{!!hasPreviousPage}">
+														<apex:commandLink styleClass="glyphicon-sf-pagination-back disabled" action="{!previousPage}" rerender="theForm"></apex:commandLink>
+													</apex:outputPanel>
+													<apex:outputPanel layout="none" rendered="{!hasPreviousPage}">
+														<apex:commandLink styleClass="glyphicon-sf-pagination-back" action="{!previousPage}" rerender="theForm" oncomplete="clearValueOfFirstSelectedCard();"></apex:commandLink>
+													</apex:outputPanel>
+
+													<apex:outputPanel layout="none" rendered="{!!hasNextPage}">
+														<apex:commandLink styleClass="glyphicon-sf-pagination-forward disabled" action="{!nextPage}" rerender="theForm" ></apex:commandLink>
+													</apex:outputPanel>
+													<apex:outputPanel layout="none" rendered="{!hasNextPage}">
+														<apex:commandLink styleClass="glyphicon-sf-pagination-forward" action="{!nextPage}" rerender="theForm" oncomplete="clearValueOfFirstSelectedCard();"></apex:commandLink>
+													</apex:outputPanel>
+												</apex:outputPanel>
+											</div>
+
+											<apex:outputPanel layout="inline" styleClass="pages" rendered="{!totalRecommendationCount > 0}">
+												<apex:outputText value="{!startPaginationRecordNumber} - {!endPaginationRecordNumber} of {!totalRecommendationCount} {!$Label.lbi__rep_recommendations}" />
+											</apex:outputPanel>
+
+											<apex:outputPanel layout="none" id="numSelected">
+												<apex:outputPanel layout="block" styleClass="selected-pagination" rendered="{!numberSelected > 0}" id="numSelectedOutputBlock">
+													<apex:outputText value="( {!numberSelected} Selected )" />
+												</apex:outputPanel>
+											</apex:outputPanel>
+
+										</div>
+
+										<div class="col-md-8">
+
+											<apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+												<a class="prism pull-right" href="#" onClick="return openSalesPrismURL('{!PrismURLAccount}');" rendered="{!renderViewInSalesPrism}" target="{!actionLinkTarget}">
+													<apex:outputText value="{!$Label.lbi__rep_sales_prism}" />
+												</a>
+											</apex:outputPanel>
+										</div>
+
+									</div>
+
+									<div class="row">
+										<div class="col-md-12">
+
+											<apex:outputPanel layout="block" styleClass="no-recommendations" id="noRecommendationsMessage" rendered="{!pagedRecommendations.size == 0}" >
+												<apex:outputText value="{!noRecommendationsMessage}" />
+											</apex:outputPanel>
+
+										</div>
+									</div>
+
+									<div class="row {!IF(isEmbeddedInOpportunity, "embedded-container", "nothing")}">
+										<div class="col-md-12 listing">
+
+											<ul class="recommendation-list">
+
+												<apex:repeat value="{!pagedRecommendations}" var="recom" >
+
+													<li class="col-md-4 {!IF(isEmbeddedInOpportunity, "embedded-content", "nothing")}" id="recCard{!recom.id}" workFlowType="{!recom.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c}">
+
+														<apex:outputPanel layout="inline" styleClass="new" rendered="{!recom.LBI__IsNew__c}">
+															<apex:outputText value="{!$Label.lbi__rep_new}" />
+														</apex:outputPanel>
+
+														<div class="card-alignment">
+
+															<div class="icon-checkbox-toggle">
+																<span class="icon glyphicon-sf-{!recom.PlayTypeNameClass__c}"></span>
+																<div class="checkbox">
+																	<label for="{!recom.Id}">
+
+																	</label>
+																</div>
+															</div>
+
+															<apex:outputPanel id="recName" layout="block" styleClass="card-details" rendered="{!recom.LBI__Lead__c != null}">
+																<h4>
+																	<apex:outputLink title="{!$Label.lbi__led_viewleaddetails}" value="/{!recom.LBI__Lead__c}" style="color: #333435" target="{!actionLinkTarget}">
+																		<apex:outputField value="{!recom.LBI__DisplayName__c}" />
+																	</apex:outputLink>
+																</h4>
+															</apex:outputPanel>
+
+															<apex:outputPanel id="recommendationName" layout="block" styleClass="card-details" onClick="selectNewRecommendation('{!recom.Id}');" rendered="{!recom.LBI__Lead__c == null}">
+																<h4>
+																	<apex:outputField value="{!recom.LBI__DisplayName__c}" />
+																</h4>
+															</apex:outputPanel>
+
+															<apex:outputPanel layout="inline" styleClass="rating-rank" rendered="{!!showScore}" id="noScoreTabList">
+
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGHEST'}">
+																	<div class="progress-radial progress-100">
+																		<div class="overlay condensed"><apex:outputText value="HIGHEST" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGH'}">
+																	<div class="progress-radial progress-75">
+																		<div class="overlay condensed"><apex:outputText value="HIGH" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'MEDIUM'}">
+																	<div class="progress-radial progress-50">
+																		<div class="overlay condensed"><apex:outputText value="MEDIUM" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'LOW'}">
+																	<div class="progress-radial progress-25">
+																		<div class="overlay condensed"><apex:outputText value="LOW" /></div>
+																	</div>
+																</apex:outputPanel>
+
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'A'}">
+																	<div class="progress-radial progress-100">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'B'}">
+																	<div class="progress-radial progress-75">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'C'}">
+																	<div class="progress-radial progress-50">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'D'}">
+																	<div class="progress-radial progress-25">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+
+															</apex:outputPanel>
+
+															<apex:outputPanel layout="inline" styleClass="rating-rank" rendered="{!showScore}" id="scoreTabList">
+
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGHEST'}">
+																	<div class="progress-radial progress-100">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGH'}">
+																	<div class="progress-radial progress-75">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'MEDIUM'}">
+																	<div class="progress-radial progress-50">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'LOW'}">
+																	<div class="progress-radial progress-25">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'A'}">
+																	<div class="progress-radial progress-100">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'B'}">
+																	<div class="progress-radial progress-75">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'C'}">
+																	<div class="progress-radial progress-50">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+																<apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'D'}">
+																	<div class="progress-radial progress-25">
+																		<div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+																	</div>
+																</apex:outputPanel>
+
+															</apex:outputPanel>
+
+														</div>
+
+														<apex:outputPanel layout="inline" rendered="{!isEmbeddedInOpportunity}" styleClass="description">
+															<apex:outputField value="{!recom.LBI__Description__c}" />
+														</apex:outputPanel>
+
+														<ul class="highlights">
+															<apex:outputPanel layout="none" rendered="{!showRevenue}">
+																<li id="revenue-hideList">
+																	<apex:outputText value="{!$Label.lbi__rep_estimated_revenue}" />
+																	<apex:outputPanel layout="inline" styleClass="revenue">
+																		<apex:outputField value="{!recom.LBI__MonetaryValue__c}" />
+																	</apex:outputPanel>
+																</li>
+															</apex:outputPanel>
+
+															<li>
+																<apex:outputText value="{!$Label.lbi__rep_daysactive}" />
+																<apex:outputPanel layout="inline" styleClass="revenue">
+																	<apex:outputField value="{!recom.LBI__AgeInDays__c}" />
+																</apex:outputPanel>
+															</li>
+
+														</ul>
+
+													</li>
+
+												</apex:repeat>
+
+											</ul>
+										</div>
+
+									</div>
+
+								</div>
+
+
+								<apex:outputPanel layout="none" rendered="{!areAccountExtensionsEnabled && selectedOpportunity.AccountId != null}">
+									<div id="companyProfileTabContentsOnAccount" class="company-profile-holder" style="display:none;">
+										<c:CompanyProfileOutput id="companyProfileOutputOnAccount" parentAcctExtId="{!selectedOpportunity.AccountId}" />
+									</div>
+								</apex:outputPanel>
+
+								<apex:outputPanel layout="none" rendered="{!isSuppInfoEnabled}">
+									<apex:outputPanel id="suppInfoTableAccount" layout="block" styleClass="suppInfoHolder" style="display:none;" >
+										<apex:actionStatus id="loadingStatus">
+							        		<apex:facet name="start">
+							        			<apex:outputText value="{!$Label.lbi__lab_loading}" />
+							        		</apex:facet>
+							        		<apex:facet name="stop">
+							        			<c:SupplementalInfoList id="supplementalInfoListAccount" isSF1Boolean="{!isSF1}" parentAcctId="{!selectedOpportunity.AccountId}" supplementalInfoRecord="{!selectedSupplementalInfo}" />
+							        		</apex:facet>
+							        	</apex:actionStatus>
+									</apex:outputPanel>
+								</apex:outputPanel>
+
+								<apex:outputPanel layout="none" styleClass="iFrameHolder" rendered="{!showPurchaseHistory}">
+									<div id="iFrameHolderOnAccount" class="company-profile-holder" style="display:none;">
+										<iframe src="{!IFrameSource}" scrolling="no" id="theIFrameOnAccount" html-iframeselector="iframeselector" width="100%" height="140px" />
+									</div>
+								</apex:outputPanel>
+
+								<!-- </div> -->
+
+							</apex:outputPanel>
+
+
+
+							<apex:actionFunction action="{!selectOpportunity}" name="selectNewOpportunityApex" reRender="theForm" onComplete="doOnComplete();" >
+								<apex:param name="selectedOpportunityId" assignTo="{!selectedOpportunityId}" value="" />
+							</apex:actionFunction>
+
+							<apex:actionFunction action="{!selectRecommendationCard}" name="selectNewRecommendation" reRender="theForm" onComplete="doOnComplete();">
+								<apex:param name="multiSelectRecommendationIds" assignTo="{!selectedRecommendationId}" value="" />
+							</apex:actionFunction>
+
+							<apex:actionFunction action="{!checkDisplayDisqualifyReason}" name="checkDisplayDisqualifyReason" reRender="recommendationEdit" />
+
+							<apex:actionFunction action="{!selectOpportunity}" name="returnToOpportunity" reRender="theForm" onComplete="doOnComplete();" />
+
+							<apex:actionFunction action="{!selectRecommendationCard}" name="returnToRecommendation" reRender="theForm" onComplete="doOnComplete();" immediate="true" />
+
+							<apex:actionFunction action="{!defineVisibilityOfElements}" name="rerenderActionLinks" reRender="accountActions, numSelected" onComplete="hideClientSideSelected();mixpanelModule.assingMPEvents();"/>
+
+							<!-- <apex:actionFunction action="{!selectSuppInfo}" name="selectSuppInfoApex" rerender="supplementalInfoList" onComplete="lejQuery('label.open-menu2').click();"> -->
+							<apex:actionFunction status="loadingStatus" action="{!selectSuppInfo}" name="selectSuppInfoApex" rerender="supplementalInfoListAccount, supplementalInfoList, pageMessages" >
+								<apex:param name="selectedSuppInfoId" assignTo="{!selectedSuppInfoId}" value="" />
+							</apex:actionFunction>
+							
+							<apex:actionFunction status="loadingStatusRec" action="{!selectSuppInfo}" name="selectSuppInfoApexRec" rerender="supplementalInfoListAccount, supplementalInfoList, pageMessages" >
+								<apex:param name="selectedSuppInfoId" assignTo="{!selectedSuppInfoId}" value="" />
+							</apex:actionFunction>
+
+						</div>
+
+						<script type="text/javascript">
+							mixpanelModule.assingMPEvents();
+						</script>
+					</apex:form>
+
+		</section>
+
+	</apex:outputpanel>
+
+</apex:page>

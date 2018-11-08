@@ -1,0 +1,35 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.NotificationIntermediateController"
+			tabStyle="Lattice_Admin__tab"
+			>
+
+	<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}" />
+
+	<div id="lattice-admin" class="notification-intermediate">
+
+		<div class="container-fluid">
+	        <div class="row">
+	            <div class="col-md-6 col-md-offset-3">
+
+					<apex:pageMessages id="theMessages" />
+
+				</div><!-- End .col-md-12 -->
+			</div><!-- End .row -->
+	        <div class="row">
+	            <div class="col-md-6 col-md-offset-3">
+
+	            	<apex:pageBlock id="theBlock" >
+						<apex:outputPanel layout="block">
+							<apex:form id="theForm">
+								<apex:commandButton styleClass="btn btn-primary" action="{!changeAppAndContinue}" value="{!$Label.lbi__not_continue}" /> <br/>
+								<apex:commandButton styleClass="btn btn-link" action="{!stayAndGoToAdmin}" value="{!$Label.lbi__not_stay}" />
+							</apex:form>
+						</apex:outputPanel>
+					</apex:pageBlock>
+
+	            </div><!-- End .col-md-12 -->
+	        </div><!-- End .row -->
+		</div>
+
+	</div>
+</apex:page>

@@ -1,0 +1,40 @@
+<aura:component controller="LBI.LCActionDisqualifyController" >
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="recommendations" type="Object[]" />
+
+    <aura:attribute access="public" name="isLoaded" type="Boolean" default="false" /> <!--Label properties do not refresh, so I render the page once they're done-->
+    <aura:attribute access="public" name="labels" type="Object" />
+    <aura:attribute access="public" name="reasons" type="Object[]" />
+    <aura:attribute access="public" name="isMoreInfo" type="Boolean" />
+    <aura:attribute access="public" name="isMoreInfoReq" type="Boolean" />
+
+    <aura:registerEvent name="cancel" type="LBI:ModalCancel"/>
+    <aura:registerEvent name="save" type="LBI:ModalSave"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <aura:if isTrue="{!v.isLoaded}">
+        <lightning:layout verticalAlign="top" multipleRows="true" pullToBoundary="small">
+            <lightning:layoutItem padding="horizontal-small" size="6" largeDeviceSize="6" mediumDeviceSize="6" smallDeviceSize="12">
+                <ui:inputSelect label="{!v.labels.reasonName}" aura:id="reason" change="{!c.handleReasonChange}" required="true"/>
+            </lightning:layoutItem>
+            <lightning:layoutItem padding="horizontal-small" size="6" largeDeviceSize="6" mediumDeviceSize="6" smallDeviceSize="12">
+                <!-- Apparently I can set the "required" property ONCE. Then, even if I change the value, the markup does not-->
+                <aura:if isTrue="{!v.isMoreInfo &amp;&amp; v.isMoreInfoReq}">
+                    <ui:inputTextArea label="{!v.labels.moreInfo}" aura:id="moreInfo" value="" required="true"/>
+                </aura:if>
+                <aura:if isTrue="{!v.isMoreInfo &amp;&amp; ! v.isMoreInfoReq}">
+                    <ui:inputTextArea label="{!v.labels.moreInfo}" aura:id="moreInfo" value="" required="false"/>
+                </aura:if>
+            </lightning:layoutItem>
+        </lightning:layout>
+    </aura:if>
+
+    <div class="actionButtons">
+    	<lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelEvent}" />
+		<lightning:button variant="brand" label="Save"  onclick="{!c.handleSaveEvent}" />
+    </div>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

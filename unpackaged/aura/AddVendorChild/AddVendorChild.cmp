@@ -1,0 +1,12 @@
+<aura:component controller="RSDNA_AddUpdateVendor" implements="force:hasRecordId">
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="containerGId" type="String" />
+    <aura:attribute name="Account" type="Account" />
+    <aura:registerEvent name="AddVendorChildEvent" type="c:AddVendorChildEvent" />
+    <aura:handler event="c:AddVendorChildEvent" action="{!c.fireSomething}" />
+    <table>
+		<tr onclick="{!c.fireSomething}">
+            {!v.Account.Name}
+		</tr>
+    </table>
+</aura:component>

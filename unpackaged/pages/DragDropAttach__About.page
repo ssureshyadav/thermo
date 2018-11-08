@@ -1,0 +1,131 @@
+<apex:page >
+<html>
+    <head>
+        <title>Drag, Drop &amp; Attach Multiple Attachments / Documents / Contents</title>
+    </head>
+    <body>
+        <p>
+            <span style="color: #ff8c00"><span style="font-size: 24px">Drag, Drop &amp; Upload </span></span></p>
+        <p>
+            Thank you again for choosing our wildly popular Drag and Drop! We really appreciate your business.</p>
+        <p>
+            <span style="font-size: 18px"><span style="color: #ff8c00">Features</span></span></p>
+        <ul>
+        <p>Our App will allow your company to quickly add multiple attachments (like screen shots of cases, email from files, PDFs and more) against any standard or custom object. 
+        </p>
+<p>Just place them inside of your Salesforce today. Select our App from the top right of your Salesforce account to get started on the configuration steps. 
+</p>
+
+<p>Quickly add a button to your accounts, opportunities, contact or lead layout with ease using our 'Generate URL' for any object or custom object button. 
+</p>
+
+<p>Find the 'Generate URL' tab in your Salesforce tabs for use on any object or custom object button. 
+</p>
+
+<p>
+Note: Be sure you have enabled Salesforce Content too before using the App: <a target="_blank" href="http://gsfn.us/t/340qz">http://gsfn.us/t/340qz</a>
+</p>
+
+<p>
+Now you are ready to start dragging documents into Salesforce.
+</p>
+
+            <li>
+                Quickly add (upload) files by Drag &amp; Drop.</li>
+            <li>
+                Works for any standard or custom objects to quickly add attachments (for e.g., quickly add screenshots to cases or sales orders to opportunities).</li>
+            <li>
+                Quickly add (upload) documents or contents.</li>
+                              
+        </ul>
+        
+        <p>
+            <span style="font-size: 18px"><span style="color: #ff8c00">Upload Documents</span></span></p>
+        <p>
+            In order to drag and drop documents, navigate to &ldquo;Upload Documents&rdquo; tab.</p>
+        <p>
+            The tab will open a new page that lets you drag &amp; drop files into the outlined area for instant uploading. Upload Dialog box shows the files that have been uploaded as well as files awaiting upload. For file uploads in progress, it shows the percentage of file that have been uploaded. User can also cancel the file upload in progress as well as remaining uploads.</p>
+        <p>
+            No configuration or setup is required for 'Upload Documents'. </p>
+        <p>To use 'Upload Documents', you will need Read &amp; Create (Write) access to the Document object.</p>
+        
+        <p>
+            <span style="font-size: 18px"><span style="color: #ff8c00">Upload Contents</span></span></p>
+        <p>
+            In order to drag and drop contents, navigate to &ldquo;Upload Contents&rdquo; tab.</p>
+        <p>
+            The tab will open a new page that lets you drag &amp; drop files into the outlined area for instant uploading. Upload Dialog box shows the files that have been uploaded as well as files awaiting upload. For file uploads in progress, it shows the percentage of file that have been uploaded. User can also cancel the file upload in progress as well as remaining uploads.</p>
+        <p>
+            No configuration or setup is required for 'Upload Contents'.</p>
+        <p>To use 'Upload Contents', you will need 'Salesforce CRM Content User' permission enabled for your user profile.</p>
+                
+                
+        <p>
+            <span style="font-size: 18px"><span style="color: #ff8c00">Upload Attachments</span></span></p>
+        <p>
+            In order to drag and drop attachments, you will need to create a detail page button. Below are the required steps for adding custom detail page button &quot;Attach File&quot;:</p>
+        <p>
+            Let&rsquo;s take an example of adding a button on Account object (same process can be followed to add button on other standard or custom objects).
+        </p>
+        <ol>
+            <li>
+                Go To setup -&gt; Customize -&gt; Accounts-&gt;Buttons and Links-&gt;New</li>
+            <li>
+                Click on New Button and Enter details</li>
+            <li>
+                Provide following information in above screen :
+                <ol>
+                    <li>
+                        Label : Attach Files (you can change it, if required)</li>
+                    <li>
+                        Name : Attach_Files (you can change it, if required)</li>
+                    <li>
+                        Description : Optional</li>
+                    <li>
+                        Display Type : Detail Page Link or Detail Page Button</li>
+                    <li>
+                        Behavior : Display in existing window without sidebar or header</li>
+                    <li>
+                        Content Source : URL</li>
+                    <li>
+                        Formula Editor : Open the Generate Url tab and select the object where you want to add the button and click on "Generate Button Url". Copy the generated url and paste in formula editor of button.
+                    </li>    
+                        <!--/apex/DragDropAttach__AttachFiles?recordid=&#123;!Account.Id}&amp;recordname=&#123;!Account.Name}&amp;recordtype=Account</li>-->
+                </ol>
+            </li>
+         <ul style="margin-left: 40px">
+            where<br/>
+            <li>
+                recordid = Id of object/record on which button need to be enabled</li>
+            <li>
+                recordname = Name of object on which button needs to be enabled</li>
+            <li>
+                recordtype = Name/Label of Object (For account it can be Customer/client or any label that is used in your organization to represent that object)</li>
+        </ul>
+        <li>
+            Finally add the button to required page layouts of Account (or object for which this button was created) and it's ready for use.
+        </li>
+        </ol>           
+        <p>
+            &nbsp;<strong>Sample Formulas</strong></p>
+        <p>
+            Please click the Generate URL tab and select the object and click on "Generate URL button". Use the Generated URL for button for any object.
+        </p>
+        
+        <p>
+            <span style="font-size: 18px"><span style="color: #ff8c00">Let us hear from you on AppExchange</span></span>
+            Simply visit <a target="_blank" href="http://bit.ly/OX6ivM" >http://bit.ly/OX6ivM</a>
+            </p>
+        
+        
+        
+        <!--<p>
+            <span style="color: #ff8c00"><span style="font-size: 18px">Support</span>&nbsp;</span></p>
+            -->
+        Appcino Apps developed with Cazoomi and supported by <a target="_blank" href="http:/www.appcino.com">Appcino Technologies</a>. Visit us today <a target="_blank" href="http:/www.appcino.com">http:/www.appcino.com</a>
+        
+                    
+    </body>
+</html>
+
+</apex:page>

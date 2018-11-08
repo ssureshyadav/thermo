@@ -1,0 +1,1237 @@
+<apex:page sidebar="{!showSidebar}"
+            standardController="Contact"
+            extensions="LBI.ContactRecommendationListController"
+            tabStyle="Lattice_Contacts_Recommendations__tab"
+            id="thePage"
+            docType="html-5.0"
+            standardStylesheets="true"
+            title="{!$Label.lbi__title_contact_recommendation}"
+            action="{!onLoad}">
+
+<!-- showHeader must be true becaue <apex:enhancedList> requires it -->
+
+    <apex:includeScript value="/support/console/37.0/integration.js"/>
+    <apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__RecommendationListJavascript)}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__BootstrapResponsiveTabs, 'bootstrap-responsive-tabs/bootstrap-responsive-tabs.js')}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__mixpanel_js)}" />
+
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__BootstrapResponsiveTabs, 'bootstrap-responsive-tabs/bootstrap-responsive-tabs.css')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+
+    <script type="text/javascript" >
+        var theEnhancedList = null;
+        var buttonPressed = false;
+        var typeOfFirstSelectedCard = null;
+
+        var mpOldTabName = "{!iFrameSettings.defaultTab}".replace(/([a-z])([A-Z])/g, '$1 $2');
+        var mpOldTopLevelTabName;
+
+        var mpBasicReturnObject = {"Page" : "{!$CurrentPage.Name}",
+                                    "OrgID" : "{!$Organization.Id}",
+                                    "CustomerID" : hashCode("{!$User.Id}"),
+                                    "Product Name" : "BIS"};
+
+        var mixpanelModule = new MixPanelModule(lejQuery, mpBasicReturnObject, mpOldTabName, {!isEnabledMixPanel}, mpOldTopLevelTabName, mixPanelShouldTrackActionCallback);
+
+        var isInSalesConsole = isInSalesConsole();
+
+       lejQuery(window).ready(function(){
+            doOnComplete();
+
+            enableDisableSaveButton(false);
+
+            mixpanelModule.sendMpMessage("Page Load");
+            setIsInSalesConsole(isInSalesConsole);
+
+       });
+
+       lejQuery(document).ready(function(){
+            if (sforce.console) {
+                sforce.console.setTabTitle('{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');
+            }
+       });
+
+
+       window.onbeforeunload = function (arg) {
+            mixpanelModule.sendMpPageDurationMessage("Page Unload");
+       }
+
+       function adjustContainerWidth(){
+            if (isInSalesConsole){
+                lejQuery("#bootstrap-lattice * .container-fluid").addClass("console-container");
+                lejQuery("#bootstrap-lattice").addClass("console-section");
+                lejQuery(".no-more-tables").removeClass("no-more-tables");
+            }
+        }
+
+       function toggleClass(element, className){
+            if (!element || !className){
+                return;
+            }
+
+            var classString = element.className, nameIndex = classString.indexOf(className);
+            if (nameIndex == -1) {
+                classString += ' ' + className;
+            }
+            else {
+                classString = classString.substr(0, nameIndex) + classString.substr(nameIndex+className.length);
+            }
+            element.className = classString;
+        }
+
+        function buttonsEnabled(enable) {
+            var $buttons = jQuery('.btn'); // find all buttons in the page
+            if (enable === false) {
+                $buttons.toggleClass('btnDisabled', true).attr('disabled', 'disabled');
+            } else {
+                $buttons.toggleClass('btnDisabled', false).attr('disabled', null);
+            }
+        }
+
+        function buildURL (listRecordId) {
+            return '<a class="chevron glyphicon-sf-view" id="chevron_' + listRecordId + '" onclick="selectNewContact(\'' + listRecordId + '\');"></a>';
+        }
+
+        var hasPageNumSpecified = {!hasPageNumSpecified};
+
+        // Timeout is required here to make jQuery happen after ExtJS happens
+        function fixListView () {
+
+            if (hasPageNumSpecified) {
+                // Navigate to the required page if it's not the same one we're on now
+                if (lejQuery("[id$='accountPageNumber']").val() != lejQuery('input.pageInput').val()) {
+                    Paginator.instances['thePage:theAccountList_paginator'].goToPage({!accountPageNumber});
+                }
+                hasPageNumSpecified = false;
+            }
+
+            if (theEnhancedList) {
+                theEnhancedList.grid.store.each(function(r) {
+                    // get the value from the record id field
+                    var recordId = r.id;
+                    //var accountName = r.get('ACCOUNT.NAME')[1];
+
+                    // create the anchor tag
+                    var newAnchor = buildURL(recordId);
+
+                    // the action column is an array type
+                    r.set('ACTION_COLUMN', [newAnchor]);
+
+                    // clear the dirty flag on the cell
+                    r.commit();
+                });
+
+                // This copies the current pagenumber over to a VF binding so we can properly build urls
+                lejQuery("[id$='accountPageNumber']").val(lejQuery('input.pageInput').val());
+            }
+
+            // Don't hide this if you need the 'X Selected' component
+            //lejQuery('span[id$="theAccountList_paginator_selection_target"]').hide();
+
+            if (lejQuery('a.chevron').length > 0) {
+                if ({!returningToPage} == false) {
+                    lejQuery('a.chevron')[0].click();
+                } else {
+                    lejQuery('a#chevron_{!LEFT(selectedContactId, 15)}').closest('tr').addClass('selectedChevron');
+                }
+            } else {
+                clearLowerSection();
+            }
+        }
+
+        function clearLowerSection () {
+            lejQuery('section.content-main').hide();
+        }
+
+        function modifyEnhancedList (el) {
+
+            // the list itself and the columnModel within it
+            theEnhancedList = el;
+
+            var actionColIndex = theEnhancedList.grid.colModel.getIndexById('ACTION_COLUMN');
+
+            // Rename the Action column header
+            var latticeLabel = '{!JSINHTMLENCODE($Label.MASS_Lattice)}';
+            theEnhancedList.grid.colModel.setColumnHeader(actionColIndex, latticeLabel);
+            theEnhancedList.grid.colModel.setColumnWidth(actionColIndex, Math.max(latticeLabel.length * 7, 40));
+
+            // hide the checkbox column if necessary
+            //theEnhancedList.grid.colModel.setHidden(0, true);
+
+            // delay if the grid is using late rendering so the grid.store has data in it
+            if (theEnhancedList.grid.deferRowRender) {
+                setTimeout(fixListView, 1);
+            } else {
+                fixListView();
+            }
+
+        }
+
+        function selectNewContact (thisId) {
+            lejQuery('#suppInfoContentDiv').hide();
+            lejQuery('section.content-main').show();
+            lejQuery('a.chevron').closest('tr').removeClass('selectedChevron');
+            lejQuery('a#chevron_'+thisId).closest('tr').addClass('selectedChevron');
+            selectNewContactApex(thisId); // apex actionfunction
+
+            updateDefaultTopLevelTabName();
+        }
+
+        function updateDefaultTopLevelTabName() {
+            var recommendationTabTitleName = lejQuery('#recommendationsBulletTopLevel > a > span').text();
+            if (!recommendationTabTitleName) {
+                setTimeout(updateDefaultTopLevelTabName, 100);
+                return;
+            }
+
+            mixpanelModule.topLevelTabsDidUpdate(recommendationTabTitleName);
+        }
+
+        // Since the dom is updated each time the account is selected, we need to reattach these
+        // This is called oncomplete from anything that selects an account
+        function attachClickOverridesOnCheckboxes () {
+            // Prevent the click event on the checkbox from firing the parent click event
+            lejQuery('input.checkableSFDCId').click(function( event ) {
+              event.stopPropagation();
+            });
+        }
+
+        function checkIsSelected () {
+            if (console) {
+                console.log('Firing Checker');
+                console.log(theSelectedIds);
+            }
+
+            var theSelectedIds = findSelectedRecommendations();
+            if (theSelectedIds.length == 0) {
+                injectMustSelectMessage();
+                return false;
+            } else {
+                return true;
+
+            }
+        }
+
+        function findSelectedRecommendations () {
+            var returnString = '';
+
+            lejQuery('input.checkableSFDCId').filter(':checked').each(function(){
+                returnString += lejQuery(this).attr('sfdcid') + ',';
+            });
+
+            // This trims the trailing comma if it exists
+            returnString = returnString.replace(/,+$/, "");
+
+            return returnString;
+        }
+
+        function unPressButtons () {
+            buttonPressed = false;
+        }
+
+        function checkDoubleClick () {
+            if (console) {
+                console.log(buttonPressed);
+            }
+
+            if (!buttonPressed) {
+                buttonPressed = true;
+                return true;
+            } else {
+                return false;
+            }
+        }
+
+        function toggleCardSelect (thisInput) {
+            if (console) {
+                console.log(lejQuery(thisInput).prop('checked'));
+            }
+            if (lejQuery(thisInput).prop('checked')) {
+                lejQuery(thisInput).closest('li').addClass('selected');
+            } else {
+                lejQuery(thisInput).closest('li').removeClass('selected');
+            }
+        }
+
+        function processTypeOfSelectedCard(thisInput){
+            if (lejQuery(thisInput).prop('checked')) {
+                if(typeOfFirstSelectedCard == null ) {
+                    typeOfFirstSelectedCard = lejQuery(thisInput).attr('workflowtype');
+                    lejQuery('input[id$="typeOfFirstSelectedCard"]').val(typeOfFirstSelectedCard);
+                    shadowOppositeCard();
+                }
+            } else {
+                var size = lejQuery('input.checkableSFDCId:checked').length;
+                if (size == 0) {
+                    typeOfFirstSelectedCard = null;
+                    lejQuery('input[id$="typeOfFirstSelectedCard"]').val(typeOfFirstSelectedCard);
+                    clearShadowing();
+                }
+            }
+        }
+
+        function shadowOppositeCard(){
+            lejQuery('li[id^="recCard"]').each(function(){
+                if(lejQuery(this).attr('workflowtype') != typeOfFirstSelectedCard){
+                    lejQuery(this).addClass('mutedCard');
+                    var input = lejQuery(this).find("input.checkableSFDCId")[0];
+                    lejQuery(input).prop('disabled', true);
+                }
+            });
+        }
+
+        function clearShadowing() {
+            lejQuery('li[id^="recCard"].mutedCard').each(function(){
+                lejQuery(this).removeClass('mutedCard');
+                var input = lejQuery(this).find("input.checkableSFDCId")[0];
+                lejQuery(input).prop('disabled', false);
+            });
+        }
+
+        function clearValueOfFirstSelectedCard() {
+            typeOfFirstSelectedCard = null;
+            lejQuery('input[id$="typeOfFirstSelectedCard"]').val(typeOfFirstSelectedCard);
+        }
+
+        function doOnComplete () {
+            attachClickOverridesOnCheckboxes();
+            makeOpportunityClickable({!isEmbeddedInContact});
+            unPressButtons();
+            attachCheckboxCounter();
+            clearValueOfFirstSelectedCard ();
+        }
+
+        function attachCheckboxCounter () {
+            lejQuery('input.checkableSFDCId').change(function(){
+                var size = lejQuery('input.checkableSFDCId:checked').length;
+                if (console) {
+                    console.log(size);
+                }
+                if (size > 0) {
+                    lejQuery("[id$='numSelectedOutputBlock']").hide();
+                    lejQuery('#numSelectedClientSide').html(size+' Selected');
+                    lejQuery('#numSelectedClientSide').show();
+                } else {
+                    lejQuery('#numSelectedClientSide').hide();
+                    lejQuery("[id$='numSelectedOutputBlock']").hide();
+                }
+            });
+        }
+
+        function hideClientSideSelected () {
+            lejQuery('#numSelectedClientSide').hide();
+        }
+
+        function enableDisableSaveButton(value) {
+            var theButton = lejQuery(".confirmButton");
+
+            if (value) {
+                lejQuery(theButton).hide();
+            } else {
+                lejQuery(theButton).show();
+            }
+            //lejQuery(theButton).attr('disabled', value);
+        }
+
+        function mixPanelShouldTrackActionCallback(itemId) {
+
+            if (itemId == 'converToOppButton' ||
+                itemId == 'linkToOppButton' ||
+                itemId == 'disqualifyButtton' ||
+                itemId == 'emailButton' ||
+                itemId == 'logButton' ||
+                itemId == 'taskButton' ||
+                itemId == 'meetingButton' ||
+                itemId == 'eventButton') {
+                    return findSelectedRecommendations().length != 0;
+            }
+
+            return true;
+        }
+
+    </script>
+
+    <!-- This shows up when they don't have permissions -->
+    <apex:outputpanel layout="none" rendered="{!!hasPermissionRequired}" >
+        <apex:pageMessages id="noPermissionPageMessages" />
+    </apex:outputpanel>
+
+    <apex:form id="hiddenForm">
+        <!-- SALES CONSOLE INDICATOR -->
+        <!-- <apex:outputPanel id="consoleModeMessage">
+            <apex:outputpanel layout="none" rendered="{!isInConsoleMode}">
+                <h1>SALES CONSOLE</h1>
+            </apex:outputpanel>
+        </apex:outputPanel> -->
+
+        <apex:actionFunction name="setIsInSalesConsole" rerender="consoleModeMessage" oncomplete="adjustContainerWidth();">
+            <apex:param name="param" value="" assignTo="{!isInConsoleMode}" />
+        </apex:actionFunction>
+    </apex:form>
+
+    <!-- This only renders when they DO have access. -->
+    <apex:outputpanel layout="none" rendered="{!hasPermissionRequired}">
+      <apex:enhancedList type="Contact" id="theContactList" height="360" rendered="{!showContactList}" oncomplete="modifyEnhancedList(this);" />
+
+      <section class="content-main" id="bootstrap-lattice">
+        <apex:form id="theForm" >
+            <div class="container-fluid">
+
+                <apex:outputpanel layout="none" rendered="{!NOT(showAccountSection)}">
+                    <apex:pageMessages id="noAccountMessage" />
+                </apex:outputpanel>
+
+                <apex:inputHidden value="{!accountPageNumber}" id="accountPageNumber"/>
+                <apex:inputHidden value="{!typeOfFirstSelectedCard}" id="typeOfFirstSelectedCard"/>
+
+                <!-- DETAILS SECTION -->
+                <apex:outputPanel id="recommendationDetailsPanel" layout="block" rendered="{!showRecommendationSection}" styleClass="lattice-details {!IF(isEmbeddedInContact, 'embedded-container', 'nothing')}" >
+
+                    <div class="row">
+
+                        <div class="col-md-12">
+                            <a class="btn btn-default back" title="{!$Label.REP_BACK_BTN}" onClick="ReturnToContact();" id="backToRecommendationsListButton">
+                            <span class="glyphicon-sf-pagination-back"></span>Back</a>
+
+                            <div class="actions-toggle pull-right">
+
+                                <div id="openmenu">
+                                    <label class="open-menu" for="menu-toggle" onclick="toggleClass(this,'close-menu', 500, 'easeOut');">Actions</label>
+                                </div>
+
+                                <input type="checkbox" id="menu-toggle"/>
+                                <ul id="menu">
+
+                                    <apex:outputPanel layout="none" rendered="{!showConvertOppButton}">
+                                        <li id="converToOppButton" >
+                                            <apex:commandLink action="{!convertRecommendationsToOppStepOneReturnToContact}" styleClass="convert-opp" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_convert_opportunity}</apex:commandLink>
+                                        </li>
+                                    </apex:outputPanel>
+                                    <apex:outputPanel layout="none" rendered="{!showLinkToOppButton}">
+                                        <li id="linkToOppButton">
+                                            <apex:commandLink action="{!linkToExistingOpportunityStepOneReturnToContact}" styleClass="link-existing" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_link_to_existing_opportunity}</apex:commandLink>
+                                        </li>
+                                    </apex:outputPanel>
+                                    <apex:outputPanel layout="none" rendered="{!showDisqualifyButton}">
+                                        <li id="disqualifyButtton">
+                                            <apex:commandLink action="{!disqualifyRecommendationsStepOne}" styleClass="disqualify" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_disqualify}</apex:commandLink>
+                                        </li>
+                                    </apex:outputPanel>
+
+<!--                                     <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.ShowEmailAction__c}" >
+                                       <li id="emailButton">
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastEmailDatetime__c != null}">
+
+
+                                            <apex:commandLink action="{!sendEmailToRecommendation}" value="Email" styleClass="email taken" rendered="{!showEmailAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!emailURLRecommendation}" styleClass="email taken" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">Email</apex:outputLink>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastEmailDatetime__c == null}">
+
+
+                                            <apex:commandLink action="{!sendEmailToRecommendation}" styleClass="email" value="Email" rendered="{!showEmailAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!emailURLRecommendation}" styleClass="email" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">Email</apex:outputLink>
+                                        </apex:outputPanel>
+                                      </li>
+                                    </apex:outputPanel>
+
+                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.ShowCallAction__c}" >
+                                      <li id="logButton">
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastCallDatetime__c != null}">
+
+
+                                            <apex:commandLink action="{!callRecommendation}" styleClass="call taken" value="Call" rendered="{!showTaskAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!callURLRecommendation}" styleClass="call taken" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">Call</apex:outputLink>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastCallDatetime__c == null}">
+
+
+                                            <apex:commandLink action="{!callRecommendation}" styleClass="call" value="Call" rendered="{!showTaskAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!callURLRecommendation}" styleClass="call" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">Call</apex:outputLink>
+                                        </apex:outputPanel>
+                                      </li>
+                                    </apex:outputPanel>
+
+                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.ShowTaskAction__c}" >
+                                      <li id="taskButton">
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastTaskDatetime__c != null}">
+
+
+                                            <apex:commandLink action="{!logTaskRecommendation}" styleClass="task taken" value="{!$Label.lbi__ais_newtask}" rendered="{!showTaskAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!taskURLRecommendation}" styleClass="task taken" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">{!$Label.lbi__ais_newtask}</apex:outputLink>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastTaskDatetime__c == null}">
+
+
+                                            <apex:commandLink action="{!logTaskRecommendation}" styleClass="task" value="{!$Label.lbi__ais_newtask}" rendered="{!showTaskAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!taskURLRecommendation}" styleClass="task" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">{!$Label.lbi__ais_newtask}</apex:outputLink>
+                                        </apex:outputPanel>
+                                      </li>
+                                    </apex:outputPanel>
+
+                                    <apex:outputPanel layout="none" rendered="{!selectedRecommendation.PlayRun__r.LatticeWorkflowSetting__r.ShowEventAction__c}" >
+                                      <li id="meetingButton">
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastEventDatetime__c != null}">
+
+
+                                            <apex:commandLink action="{!scheduleEventRecommendation}" value="{!$Label.lbi__rep_set_up_meeting_new}" styleClass="event taken" rendered="{!showEventAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                            <apex:outputLink value="{!eventURLRecommendation}" styleClass="event taken" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">{!$Label.lbi__rep_set_up_meeting_new}</apex:outputLink>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!selectedRecommendation.LastEventDatetime__c == null}">
+
+
+                                            <apex:commandLink action="{!scheduleEventRecommendation}" value="{!$Label.lbi__rep_set_up_meeting_new}" styleClass="event" rendered="{!showEventAction && !isEmbeddedInContact}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+                                            <apex:outputLink value="{!eventURLRecommendation}" styleClass="event" rendered="{!showEventAction && isEmbeddedInContact}" target="{!actionLinkTarget}">{!$Label.lbi__rep_set_up_meeting_new}</apex:outputLink>
+                                        </apex:outputPanel>
+                                      </li>
+                                    </apex:outputPanel> -->
+
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12">
+                            <apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+                                <a class="prism pull-right" href="#" rendered="{!renderViewInSalesPrism}" onClick="return openSalesPrismURL('{!PrismURLAccount}');" target="{!actionLinkTarget}">{!$Label.REP_SALES_PRISM}</a>
+                            </apex:outputPanel>
+                        </div>
+
+                        <div class="col-md-12">
+                            <apex:pageMessages id="recomPageMessages"/>
+                        </div>
+
+                        <div class="col-md-12">
+
+                            <div class="rec-details-container">
+
+                                <h3 class="rec-display-name" title="{!selectedRecommendation.LBI__DisplayName__c}">
+                                <span class="icon rec-title glyphicon-sf-{!selectedRecommendation.PlayTypeNameClass__c}"></span>
+                                    <apex:outputField value="{!selectedRecommendation.LBI__DisplayName__c}" />
+                                    <!--<em class="new">New</em>-->
+                                </h3>
+
+                                <div class="account-details">
+
+                                    <p class="description"><apex:outputField value="{!selectedRecommendation.LBI__Description__c}" /></p>
+
+                                    <ul class="highlights">
+                                        <apex:outputPanel layout="none" rendered="{!showRevenue}">
+                                            <li id="revenue-hide">
+                                                  {!$Label.REP_Estimated_Revenue} &nbsp;
+                                                  <em class="revenue"><apex:outputField value="{!selectedRecommendation.LBI__MonetaryValue__c}" /></em>
+                                            </li>
+                                        </apex:outputPanel>
+
+                                        <li>Days Active
+                                            <em class="created">{!selectedRecommendation.AgeInDays__c}</em>
+                                        </li>
+
+                                        <li>{!$Label.REP_Status}&nbsp;<em class="created"><apex:outputField value="{!selectedRecommendation.LBI__Status__c}" /></em>
+                                        </li>
+                                    </ul>
+
+                                    <div class="rating-rank">
+                                        <apex:outputPanel layout="inline" rendered="{!!showScore}" id="noScoreTab">
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'A'}" >
+                                              <div class="progress-radial progress-100">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'B'}" >
+                                              <div class="progress-radial progress-75">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'C'}" >
+                                              <div class="progress-radial progress-50">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'D'}" >
+                                            <div class="progress-radial progress-25">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Rank__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGHEST'}" >
+                                              <div class="progress-radial progress-100">
+                                                <div class="overlay condensed"><apex:outputText value="HIGHEST" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGH'}" >
+                                              <div class="progress-radial progress-75">
+                                                <div class="overlay condensed"><apex:outputText value="HIGH" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'MEDIUM'}" >
+                                              <div class="progress-radial progress-50">
+                                                <div class="overlay condensed"><apex:outputText value="MEDIUM" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'LOW'}" >
+                                              <div class="progress-radial progress-25">
+                                                <div class="overlay condensed"><apex:outputText value="LOW" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+
+                                        </apex:outputPanel>
+
+                                        <apex:outputPanel layout="inline" rendered="{!showScore}" id="scoreTab">
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'A'}" >
+                                              <div class="progress-radial progress-100">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'B'}" >
+                                              <div class="progress-radial progress-75">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'C'}" >
+                                              <div class="progress-radial progress-50">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'D'}" >
+                                              <div class="progress-radial progress-25">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGHEST'}" >
+                                              <div class="progress-radial progress-100">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'HIGH'}" >
+                                              <div class="progress-radial progress-75">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'MEDIUM'}" >
+                                              <div class="progress-radial progress-50">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+                                            <apex:outputPanel layout="none" rendered="{!UPPER(selectedRecommendation.LBI__Rank__c) == 'LOW'}" >
+                                              <div class="progress-radial progress-25">
+                                                <div class="overlay"><apex:outputField value="{!selectedRecommendation.LBI__Likelihood__c}" /></div>
+                                              </div>
+                                            </apex:outputPanel>
+
+                                        </apex:outputPanel>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <c:TabMenuComponent id="tabMenuComponentInRec"
+                                showBuyingSignals="{!showBuyingSignals}"
+                                showTalkingPoints="true"
+                                showPurchaseHistory="{!showPurchaseHistory}"
+                                isSuppInfoEnabled="{!isSuppInfoEnabled}"
+                                showCompanyProfile="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}"
+                                isAtRecLevel="true"
+                                recommendationPlayId="{!selectedRecommendation.LBI__Play__c}" />
+                        </div>
+
+                        <apex:outputPanel layout="none" rendered="{!areAccountExtensionsEnabled && selectedRecommendation.LBI__AccountExtension__c != null}">
+                            <apex:outputPanel id="companyProfileTabContents" layout="block" styleClass="company-profile-holder" style="display:none;">
+                                <c:CompanyProfileOutput id="companyProfileOutput" parentAcctExtId="{!selectedRecommendation.LBI__AccountExtension__c}" />
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+
+                        <apex:outputPanel layout="none" rendered="{!isSuppInfoEnabled}">
+                            <apex:outputPanel id="suppInfoTable" layout="block" styleClass="suppInfoHolder" style="display:none;" >
+                                <apex:actionStatus id="loadingStatusRec">
+					        		<apex:facet name="start">
+					        			<apex:outputText value="{!$Label.lbi__lab_loading}" />
+					        		</apex:facet>
+					        		<apex:facet name="stop">
+					        			<c:SupplementalInfoList id="supplementalInfoList" showAccountLevel="false" isSF1Boolean="{!isSF1}" isInConsoleBoolean="{!isInConsoleMode}" parentAcctId="{!selectedRecommendation.LBI__Account__c}" supplementalInfoRecord="{!selectedSupplementalInfo}" />
+					        		</apex:facet>
+					        	</apex:actionStatus>
+                            </apex:outputPanel>
+                        </apex:outputPanel>
+
+                        <apex:outputPanel id="iFrameHolder" layout="block" styleClass="col-md-12 iFrameHolder" >
+                            <iframe src="{!IFrameSource}" scrolling="no" id="theIFrame" html-iframeselector="iframeselector" width="100%" height="140px" />
+                        </apex:outputPanel>
+
+                    </div>
+
+
+                </apex:outputPanel><!-- END DETAILS SECTION -->
+
+                <!-- LISTING SECTION -->
+                <apex:outputPanel id="contactDetailsPanel" rendered="{!showAccountSection}" layout="block" styleClass="lattice-details {!IF(isEmbeddedInContact, 'embedded-container', 'nothing')}">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <c:TabMenuComponent id="tabMenuComponentInDetails"
+                                topLevel="true"
+                                showLogoImg="true"
+                                showTopLevelRec="true"
+                                showPurchaseHistory="{!showPurchaseHistory}"
+                                showCompanyProfile="{!areAccountExtensionsEnabled && selectedContact.id != null}"
+                                isSuppInfoEnabled="{!isSuppInfoEnabled}"
+                                isAtRecLevel="false" />
+                            <apex:pageMessages id="accountPageMessages" />
+                        </div>
+                    </div>
+
+                    <div id="recommendationCardsContainer">
+
+                        <div class="row listing-details">
+
+                            <div class="col-md-4">
+                                <div class="pagination">
+                                    <apex:outputPanel layout="inline" styleClass="pages" rendered="{!totalRecommendationCount > 1 && totalRecommendationCount <= perPageSize}}">
+                                        <apex:outputText value="{!totalRecommendationCount} Recommendation" />
+                                        <apex:outputText rendered="{!totalRecommendationCount > 1}" value="s" />
+                                    </apex:outputPanel>
+
+                                    <apex:outputPanel layout="inline" styleClass="pagination-arrows" rendered="{!totalRecommendationCount > perPageSize}">
+                                        <apex:outputPanel layout="none" rendered="{!!hasPreviousPage}">
+                                            <apex:commandLink styleClass="glyphicon-sf-pagination-back disabled" action="{!previousPage}" rerender="theForm"></apex:commandLink>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!hasPreviousPage}">
+                                            <apex:commandLink styleClass="glyphicon-sf-pagination-back" action="{!previousPage}" rerender="theForm" oncomplete="clearValueOfFirstSelectedCard();"></apex:commandLink>
+                                        </apex:outputPanel>
+
+                                        <apex:outputPanel layout="none" rendered="{!!hasNextPage}">
+                                            <apex:commandLink styleClass="glyphicon-sf-pagination-forward disabled" action="{!nextPage}" rerender="theForm" id="nextRecPageDisabled"></apex:commandLink>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!hasNextPage}">
+                                            <apex:commandLink styleClass="glyphicon-sf-pagination-forward" action="{!nextPage}" rerender="theForm" oncomplete="clearValueOfFirstSelectedCard();" id="nextRecPageEnabled"></apex:commandLink>
+                                        </apex:outputPanel>
+                                    </apex:outputPanel>
+                                </div>
+
+                                <apex:outputPanel layout="inline" styleClass="pages" rendered="{!totalRecommendationCount > 0}">
+                                    <apex:outputText value="{!startPaginationRecordNumber} - {!endPaginationRecordNumber} of {!totalRecommendationCount} {!$ObjectType.LBI__Recommendation__c.LabelPlural}" />
+                                </apex:outputPanel>
+
+                                <apex:outputPanel layout="none" id="numSelected">
+                                    <apex:outputPanel layout="block" styleClass="selected-pagination" rendered="{!numberSelected > 0}" id="numSelectedOutputBlock">
+                                        <apex:outputText value="( {!numberSelected} Selected )" />
+                                    </apex:outputPanel>
+                                </apex:outputPanel>
+
+                            </div>
+
+                            <div class="col-md-8">
+                                <apex:outputPanel layout="block" styleClass="actions-toggle" id="accountActions">
+                                    <div id="openmenu">
+                                        <label class="open-menu" for="menu-toggle3" onclick="toggleClass(this,'close-menu', 500, 'easeOut');">{!$Label.LAB_Actions}</label>
+                                    </div>
+                                    <input type="checkbox" id="menu-toggle3"/>
+                                    <ul id="menu3">
+
+                                        <apex:outputPanel layout="none" rendered="{!showConvertOppButton && !isLeadBasedRecommendationSelected}">
+                                            <li id="converToOppButton">
+                                                <apex:commandLink action="{!convertRecommendationsToOppStepOneReturnToContact}" styleClass="convert-opp" rerender="theForm" oncomplete="doOnComplete();" rendered="{!hasPagedRecommendations}">{!$Label.lbi__rep_convert_opportunity}</apex:commandLink>
+                                            </li>
+                                        </apex:outputPanel>
+
+                                        <apex:outputPanel layout="none" rendered="{!showConvertOppButtonLeadBased && isLeadBasedRecommendationSelected}">
+                                            <li id="converToOppButton">
+                                                <apex:commandLink styleclass="convert-opp" action="{!convertLead}" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedRecommendation.LBI__LeadId__c}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedRecommendation.LBI__DisplayName__c)}');" rerender="accountPageMessages">
+                                                    {!$Label.lbi__rep_convert_to_lead}
+                                                </apex:commandLink>
+                                            </li>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!showLinkToOppButton}">
+                                            <li id="linkToOppButton">
+                                                <apex:commandLink action="{!linkToExistingOpportunityStepOneReturnToContact}" styleClass="link-existing" rerender="theForm" oncomplete="doOnComplete();" rendered="{!hasPagedRecommendations}">{!$Label.lbi__rep_link_to_existing_opportunity}</apex:commandLink>
+                                            </li>
+                                        </apex:outputPanel>
+                                        <apex:outputPanel layout="none" rendered="{!showDisqualifyButton}">
+                                            <li id="disqualifyButtton">
+                                                <apex:commandLink action="{!disqualifyRecommendationsStepOne}" styleClass="disqualify" rerender="theForm" oncomplete="doOnComplete();" rendered="{!hasPagedRecommendations}">{!$Label.lbi__rep_disqualify}</apex:commandLink>
+                                            </li>
+                                        </apex:outputPanel>
+
+                                        <apex:outputPanel layout="none" rendered="{!hasPagedRecommendations}">
+                                            <apex:outputPanel layout="none" rendered="{!showEmailAction}" >
+                                                <li id="emailButton">
+                                                    <apex:outputPanel layout="none" rendered="{! !isEmbeddedInContact}" >
+                                                        <span id="emailButton">
+
+
+                                                           <apex:commandLink id="nonEmbeddedEmailLink" action="{!sendEmail}" styleClass="email" value="{!$Label.lbi__ais_sendemail}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+
+                                                        </span>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{! isEmbeddedInContact}" >
+                                                        <span id="emailButton">
+
+                                                            <!-- COD-1995
+                                                            <apex:outputLink id="embeddedEmailLink" onClick="return updateElementLinkToReturnInConsole(this);" value="{!emailURL}" styleClass="email" target="{!actionLinkTarget}">
+                                                                {!$Label.lbi__ais_sendemail}
+                                                            </apex:outputLink>-->
+                                                            <apex:commandLink id="embeddedEmailLink" action="{!sendEmailToAccount}" styleClass="email" value="{!$Label.lbi__ais_sendemail}" rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}');"/>
+                                                        </span>
+                                                    </apex:outputPanel>
+                                                </li>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!showCallAction}">
+
+                                                <li id="logButton">
+                                                    <apex:outputPanel layout="none" rendered="{! !isEmbeddedInContact}" >
+                                                    <span id="logButton">
+                                                       <apex:commandLink id="nonEmbeddedCallLink" action="{!makeCall}" styleClass="call" value="{!$Label.lbi__rep_call_new}"  rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+                                                    </span>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{!isEmbeddedInContact}" >
+                                                    <span id="logButton">
+
+                                                       <!-- COD-1995
+                                                       <apex:outputLink id="embeddedCallLink" onClick="return updateElementLinkToReturnInConsole(this);" value="{!callURL}" styleClass="call" target="{!actionLinkTarget}">
+                                                          {!$Label.lbi__rep_call_new}
+                                                       </apex:outputLink>-->
+
+                                                       <apex:commandLink id="embeddedCallLink" action="{!callAccount}" styleClass="call" value="{!$Label.lbi__rep_call_new}"  rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}');"/>
+                                                    </span>
+                                                    </apex:outputPanel>
+                                                </li>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!showTaskAction}">
+
+                                              <li id="taskButton">
+                                                <apex:outputPanel layout="none" rendered="{! !isEmbeddedInContact}" >
+                                                    <span id="taskButton">
+
+                                                    <apex:commandLink id="nonEmbeddedTaskLink" action="{!logTask}" styleClass="task" value="{!$Label.lbi__ais_newtask}" rerender="theForm" target="{!actionLinkTarget}"  onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+                                                    </span>
+                                                </apex:outputPanel>
+                                                <apex:outputPanel layout="none" rendered="{! isEmbeddedInContact}" >
+                                                    <span id="taskButton">
+
+                                                    <!-- COD-1995
+                                                    <apex:outputLink id="embeddedTaskLink" onClick="return updateElementLinkToReturnInConsole(this);" value="{!taskURL}" styleClass="task" target="{!actionLinkTarget}">
+                                                        {!$Label.lbi__ais_newtask}
+                                                    </apex:outputLink>-->
+                                                     <apex:commandLink id="embeddedTaskLink" action="{!logTaskAccount}" styleClass="task" value="{!$Label.lbi__ais_newtask}" rerender="theForm" target="{!actionLinkTarget}"  onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}');"/>
+
+                                                    </span>
+                                                </apex:outputPanel>
+                                              </li>
+                                            </apex:outputPanel>
+
+                                            <apex:outputPanel layout="none" rendered="{!showEventAction}">
+
+                                                <li id="meetingButton">
+                                                    <apex:outputPanel layout="none" rendered="{! !isEmbeddedInContact}">
+                                                        <span id="eventButton">
+
+                                                            <apex:commandLink id="nonEmbeddedEventLink" action="{!scheduleEvent}" styleClass="event" value="{!$Label.lbi__rep_set_up_meeting_new}"  rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}', '{!JSINHTMLENCODE(selectedContact.FirstName+' '+selectedContact.LastName)}');"/>
+
+                                                        </span>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{! isEmbeddedInContact}">
+                                                        <span id="eventButton">
+
+                                                           <!-- COD-1995
+                                                            <apex:outputLink id="embeddedEventLink" onClick="return updateElementLinkToReturnInConsole(this);" value="{!eventURL}" styleClass="event" target="{!actionLinkTarget}">
+                                                            {!$Label.lbi__rep_set_up_meeting_new}
+                                                            </apex:outputLink>
+                                                            -->
+                                                            <apex:commandLink id="embeddedEventLink" action="{!scheduleEventAccount}" styleClass="event" value="{!$Label.lbi__rep_set_up_meeting_new}"  rerender="theForm" target="{!actionLinkTarget}" onComplete="navigateToTab('{!redirectUrl}', '{!selectedContactId}', false, '{!isEmbeddedInContact}');"/>
+
+                                                        </span>
+                                                    </apex:outputPanel>
+                                                </li>
+                                            </apex:outputPanel>
+                                        </apex:outputPanel>
+
+                                    </ul>
+                                </apex:outputPanel>
+                                <apex:outputPanel rendered="{!renderViewInSalesPrism}" layout="none">
+                                    <a class="prism pull-right" href="#" onClick="return openSalesPrismURL('{!PrismURLAccount}');" rendered="{!renderViewInSalesPrism}" target="{!actionLinkTarget}">{!$Label.lbi__rep_sales_prism}</a>
+                                </apex:outputPanel>
+                            </div>
+
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+
+                                <apex:outputPanel layout="block" styleClass="no-recommendations" id="noRecommendationsMessage" rendered="{!pagedRecommendations.size == 0}" >
+                                    <apex:outputText value="{!noRecommendationsMessage}" />
+                                </apex:outputPanel>
+
+                            </div>
+                        </div>
+
+                        <div class="row {!IF(isEmbeddedInContact, "embedded-container", "nothing")}">
+                            <div class="col-md-12 listing">
+
+                                <ul class="recommendation-list">
+
+                                    <apex:repeat value="{!pagedRecommendations}" var="recom" >
+
+                                        <li class="col-md-4 {!IF(isEmbeddedInContact, "embedded-content", "nothing")}" id="recCard{!recom.id}" workFlowType="{!recom.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c}">
+
+                                            <apex:outputPanel layout="inline" styleClass="new" rendered="{!recom.LBI__IsNew__c}">
+                                                {!$Label.lbi__rep_new}
+                                            </apex:outputPanel>
+
+                                            <div class="card-alignment">
+
+                                                <div class="icon-checkbox-toggle">
+                                                    <span class="icon glyphicon-sf-{!recom.PlayTypeNameClass__c}"></span>
+                                                    <div class="checkbox">
+                                                        <label for="{!recom.Id}">
+                                                          <apex:inputField styleClass="checkableSFDCId" value="{!recom.LBI__IsSelected__c}" html-sfdcid="{!recom.Id}" html-workFlowType="{!recom.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c}" onchange="toggleCardSelect(this);processTypeOfSelectedCard(this);rerenderActionLinks();" />
+                                                        </label>
+                                                    </div>
+                                                </div>
+
+                                                <apex:outputPanel id="recName" layout="block" styleClass="card-details" rendered="{!recom.LBI__Lead__c != null}">
+                                                    <h4>
+                                                        <!--<apex:outputLink title="{!$Label.LED_ViewLeadDetails}" value="/{!recom.Lead__c}" style="color: #333435" target="{!actionLinkTarget}">{!recom.LBI__DisplayName__c}</apex:outputLink>-->
+                                                        <a href="#" title="{!$Label.LED_ViewLeadDetails}" style="color: #333435" onclick="navigateToTab('/{!recom.Lead__c}', '{!selectedContactId}', false, '{!isEmbeddedInContact}');">{!recom.LBI__DisplayName__c}</a>
+                                                    </h4>
+                                                </apex:outputPanel>
+
+                                                <apex:outputPanel id="recommendationName" layout="block" styleClass="card-details" onClick="selectNewRecommendation('{!recom.Id}');" rendered="{!recom.LBI__Lead__c == null}">
+                                                    <h4>
+                                                        <apex:outputField value="{!recom.LBI__DisplayName__c}" />
+                                                    </h4>
+                                                </apex:outputPanel>
+
+                                                <apex:outputPanel layout="inline" styleClass="rating-rank" rendered="{!!showScore}" id="noScoreTabList">
+
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGHEST'}">
+                                                        <div class="progress-radial progress-100">
+                                                            <div class="overlay condensed"><apex:outputText value="HIGHEST" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGH'}">
+                                                            <div class="progress-radial progress-75">
+                                                            <div class="overlay condensed"><apex:outputText value="HIGH" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'MEDIUM'}">
+                                                        <div class="progress-radial progress-50">
+                                                            <div class="overlay condensed"><apex:outputText value="MEDIUM" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'LOW'}">
+                                                        <div class="progress-radial progress-25">
+                                                            <div class="overlay condensed"><apex:outputText value="LOW" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'A'}">
+                                                      <div class="progress-radial progress-100">
+                                                              <div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+                                                            </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'B'}">
+                                                      <div class="progress-radial progress-75">
+                                                              <div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+                                                            </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'C'}">
+                                                      <div class="progress-radial progress-50">
+                                                              <div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+                                                            </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'D'}">
+                                                      <div class="progress-radial progress-25">
+                                                              <div class="overlay"><apex:outputField value="{!recom.LBI__Rank__c}" /></div>
+                                                            </div>
+                                                    </apex:outputPanel>
+
+                                                </apex:outputPanel>
+
+                                                <apex:outputPanel layout="inline" styleClass="rating-rank" rendered="{!showScore}" id="scoreTabList">
+
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGHEST'}">
+                                                        <div class="progress-radial progress-100">
+                                                          <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'HIGH'}">
+                                                        <div class="progress-radial progress-75">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'MEDIUM'}">
+                                                        <div class="progress-radial progress-50">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'LOW'}">
+                                                        <div class="progress-radial progress-25">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'A'}">
+                                                        <div class="progress-radial progress-100">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'B'}">
+                                                        <div class="progress-radial progress-75">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'C'}">
+                                                        <div class="progress-radial progress-50">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                    <apex:outputPanel layout="none" rendered="{!UPPER(recom.LBI__Rank__c) == 'D'}">
+                                                        <div class="progress-radial progress-25">
+                                                            <div class="overlay"><apex:outputField value="{!recom.LBI__Likelihood__c}" /></div>
+                                                        </div>
+                                                    </apex:outputPanel>
+                                                </apex:outputPanel>
+                                            </div>
+
+                                            <apex:outputPanel layout="inline" rendered="{!isEmbeddedInContact}" styleClass="description">{!recom.LBI__Description__c}</apex:outputPanel>
+
+                                            <ul class="highlights">
+                                                <apex:outputPanel layout="none" rendered="{!showRevenue}">
+                                                    <li id="revenue-hideList">
+                                                        {!$Label.lbi__rep_estimated_revenue}
+                                                        <apex:outputPanel layout="inline" styleClass="revenue">
+                                                            <apex:outputField value="{!recom.LBI__MonetaryValue__c}" />
+                                                        </apex:outputPanel>
+                                                    </li>
+                                                </apex:outputPanel>
+
+                                                <li>Days Active
+                                                    <apex:outputPanel layout="inline" styleClass="revenue">
+                                                        {!recom.LBI__AgeInDays__c}
+                                                    </apex:outputPanel>
+                                                </li>
+
+                                                <li>
+                                                    Actions
+                                                    <apex:outputPanel layout="inline" styleClass="created" rendered="{!recom.LBI__LastEmailDatetime__c == null && recom.LBI__LastCallDatetime__c == null && recom.LBI__LastTaskDatetime__c == null && recom.LBI__LastEventDatetime__c == null}">
+                                                          None
+                                                    </apex:outputPanel>
+                                                    <span class="actions-taken">
+                                                        <apex:outputPanel layout="none" rendered="{!recom.LBI__LastEmailDatetime__c != null}">
+                                                          <span data-toggle="tooltip" title="Email Sent" class="glyphicon-sf-email"></span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!recom.LBI__LastCallDatetime__c != null}">
+                                                          <span data-toggle="tooltip" title="Call Made" class="glyphicon-sf-call"></span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!recom.LBI__LastTaskDatetime__c != null}">
+                                                          <span data-toggle="tooltip" title="Task Recorded" class="glyphicon-sf-task"></span>
+                                                        </apex:outputPanel>
+                                                        <apex:outputPanel layout="none" rendered="{!recom.LBI__LastEventDatetime__c != null}">
+                                                          <span data-toggle="tooltip" title="Event Recorded" class="glyphicon-sf-event"></span>
+                                                        </apex:outputPanel>
+                                                    </span>
+                                                </li>
+
+                                            </ul>
+
+                                        </li>
+
+                                    </apex:repeat>
+
+                                </ul>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <apex:outputPanel layout="none" rendered="{!areAccountExtensionsEnabled && selectedContact.Id != null}">
+                        <div id="companyProfileTabContentsOnAccount" class="company-profile-holder" style="display:none;">
+                            <c:CompanyProfileOutput id="companyProfileOutputOnAccount" parentAcctExtId="{!selectedContact.Id}" />
+                        </div>
+                    </apex:outputPanel>
+
+                    <apex:outputPanel layout="none" rendered="{!isSuppInfoEnabled}">
+                        <apex:outputPanel id="suppInfoTableAccount" layout="block" styleClass="suppInfoHolder" style="display:none;" >
+                            <apex:actionStatus id="loadingStatus">
+				        		<apex:facet name="start">
+				        			<apex:outputText value="{!$Label.lbi__lab_loading}" />
+				        		</apex:facet>
+				        		<apex:facet name="stop">
+				        			<c:SupplementalInfoList id="supplementalInfoListAccount" showAccountLevel="true" isSF1Boolean="{!isSF1}" parentAcctId="{!selectedContact.AccountId}" supplementalInfoRecord="{!selectedSupplementalInfo}" />
+				        		</apex:facet>
+				        	</apex:actionStatus>
+                        </apex:outputPanel>
+                    </apex:outputPanel>
+
+                    <apex:outputPanel layout="none" rendered="{!showPurchaseHistory}">
+                        <div id="iFrameHolderOnAccount" class="iFrameHolder" style="display:none;">
+                            <iframe src="{!IFrameSource}" scrolling="no" id="theIFrameOnAccount" html-iframeselector="iframeselector" width="100%" height="140px" />
+                        </div>
+                    </apex:outputPanel>
+
+                </apex:outputPanel>
+
+                <!-- New Opportunity Section -->
+
+                <apex:outputPanel id="oppHolder" rendered="{!showOppSection}" layout="block" styleClass="lattice-details">
+
+                    <div class="row wrapper">
+                        <div class="col-md-12">
+                            <h3>{!$Label.lbi__rep_new_opportunity}</h3>
+                        </div>
+
+                        <div class="col-md-12">
+                            <apex:pageMessages id="oppPageMessages" />
+                        </div>
+
+                        <!-- COD-1088:  Yes, this is funky.  This ensures lookup filters that depend on Account work. -->
+                        <div style="display:none;">
+                            <apex:inputField styleClass="form-control" value="{!newOpp.AccountId}" />
+                        </div>
+
+                        <apex:repeat value="{!oppFields}" var="oppFieldName" >
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <apex:outputLabel value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" />
+                                    <apex:inputField styleClass="form-control" value="{!newOpp[oppFieldName]}" />
+                                </div>
+                            </div>
+                        </apex:repeat>
+
+                        <div class="col-md-12">
+                            <br /><br />
+                            <apex:commandLink id="newOppCancelButton" styleClass="popup-modal-dismiss btn btn-default pull-left" action="{!cancelConvertOpportunity}" rerender="theForm" oncomplete="doOnComplete();" immediate="true" >{!$Label.lbi__lab_cancel}</apex:commandLink>
+                            <apex:commandLink styleClass="btn btn-success pull-right confirmButton" action="{!convertRecommendationToOppStepTwoReturnToContact}" id="convertConfirm" rerender="theForm" onclick="enableDisableSaveButton(true);" oncomplete="doOnComplete();">{!$Label.lbi__rep_save_opportunity}</apex:commandLink>
+                        </div>
+                    </div>
+
+                </apex:outputPanel>
+
+                <!--Disqualification Section -->
+
+                <apex:outputPanel id="recommendationEdit" layout="block" rendered="{!showDisqualifySection}" styleClass="lattice-details">
+                    <div class="row wrapper">
+                        <div class="col-md-12">
+                          <h2>{!$Label.lbi__rep_disqualify_recommendation}</h2>
+                          <apex:pageMessages id="recom2PageMessages"/>
+                        </div>
+
+                        <div class="col-md-6">
+                            <apex:outputLabel value="{!$ObjectType.LBI__Recommendation__c.fields.LBI__DisqualificationReason__c.label}" />
+                            <apex:selectList styleClass="form-control disqualifyReason" value="{!selectedDisqualifyReason}" multiselect="false" size="1" onChange="checkDisplayDisqualifyReason();" >
+                                <apex:selectOptions value="{!disqualificationReasons}"/>
+                            </apex:selectList>
+                        </div>
+                        <apex:outputPanel styleClass="col-md-6 {!IF(otherDisqualifyReasonOptional,'','required-disqualify')}" rendered="{!showOtherDisqualifyReason}" id="disqReasonPanel">
+                            <apex:outputLabel value="{!$Label.lbi__dr_enterinfo}" />
+                            <apex:inputField styleClass="form-control" value="{!selectedRecommendation.LBI__DisqualificationReason__c}"/>
+                        </apex:outputPanel>
+
+                        <div class="col-md-12 center-block">
+                            <br /><br />
+                            <apex:commandLink id="disqualificationCancelButton" styleClass="popup-modal-dismiss btn btn-default" action="{!cancelConvertOpportunity}" rerender="theForm" oncomplete="doOnComplete();" immediate="true">{!$Label.lbi__lab_cancel}</apex:commandLink>
+                            <apex:commandLink styleClass="btn btn-danger disqualifyLink confirmButton" action="{!disqualifyRecommendationsStepTwoReturnToContact}" onclick="enableDisableSaveButton(true);" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_disqualify}</apex:commandLink>
+                        </div>
+                    </div>
+
+                </apex:outputPanel>
+
+                <!-- START LINK TO EXISITING OPPORTUNITY SECTION -->
+
+                <apex:outputPanel id="recommendationlink" layout="block" rendered="{!showlinkToExistingOpportunitySection}" styleClass="lattice-details">
+
+                    <div class="row wrapper">
+
+                        <div class="col-md-12">
+                          <h2>{!$Label.lbi__rep_link_to_existing_opportunity}</h2>
+                        </div>
+
+                        <div class="col-md-12">
+                          <apex:pageMessages id="recom3PageMessages"/>
+                        </div>
+
+                        <div class="col-md-12">
+                          <apex:inputField styleClass="form-control" value="{!selectedRecommendation[appSettings.recomOppRelationshipFieldName]}" rendered="{!showOpportunitylookup}" required="true"/>
+                          <apex:pageMessage summary="No opportunities can be linked" severity="error" strength="3" rendered="{!!showOpportunitylookup}"/>
+                        </div>
+
+                        <div class="col-md-12 center-block">
+                          <br /><br />
+                          <apex:commandLink id="linkToOpportunityCancelButton" styleClass="popup-modal-dismiss btn btn-default"    action="{!cancelConvertOpportunity}" rerender="theForm" oncomplete="doOnComplete();" immediate="true">{!$Label.lbi__lab_cancel}</apex:commandLink>
+                          <apex:commandLink styleClass="btn btn-danger linkToOpportunityLink confirmButton" action="{!linkToExistingOpportunityStepTwoReturnToContact}" rendered="{!showOpportunitylookup}" onclick="enableDisableSaveButton(true);" rerender="theForm" oncomplete="doOnComplete();">{!$Label.lbi__rep_link_to_existing_opportunity}</apex:commandLink>
+                        </div>
+
+                    </div>
+
+                </apex:outputPanel>
+
+                <!-- END EXISITING OPPORTUNITY SECTION -->
+
+                <apex:actionFunction action="{!selectContact}" name="selectNewContactApex" reRender="theForm" onComplete="doOnComplete();" >
+                    <apex:param name="selectedContactId" assignTo="{!selectedContactId}" value="" />
+                </apex:actionFunction>
+
+                <apex:actionFunction action="{!selectRecommendationCard}" name="selectNewRecommendation" reRender="theForm" onComplete="doOnComplete();">
+                    <apex:param name="multiSelectRecommendationIds" assignTo="{!selectedRecommendationId}" value="" />
+                </apex:actionFunction>
+
+                <apex:actionFunction action="{!checkDisplayDisqualifyReason}" name="checkDisplayDisqualifyReason" reRender="recommendationEdit" />
+
+                <apex:actionFunction action="{!selectContact}" name="ReturnToContact" reRender="theForm" onComplete="doOnComplete();" />
+
+                <apex:actionFunction action="{!selectRecommendationCard}" name="returnToRecommendation" reRender="theForm" onComplete="doOnComplete();" immediate="true" />
+
+                <apex:actionFunction action="{!injectMustSelectMessage}" name="injectMustSelectMessage" reRender="theForm" onComplete="doOnComplete();" />
+
+                <apex:actionFunction action="{!defineVisibilityOfElements}" name="rerenderActionLinks" reRender="accountActions, numSelected" onComplete="hideClientSideSelected();mixpanelModule.assingMPEvents();"/>
+
+                <!-- <apex:actionFunction action="{!selectSuppInfo}" name="selectSuppInfoApex" rerender="supplementalInfoList" onComplete="lejQuery('label.open-menu2').click();"> -->
+                <apex:actionFunction status="loadingStatus" action="{!selectSuppInfo}" name="selectSuppInfoApex" rerender="supplementalInfoListAccount, supplementalInfoList, pageMessages"  oncomplete="adjustContainerWidth();">
+                    <apex:param name="selectedSuppInfoId" assignTo="{!selectedSuppInfoId}" value="" />
+                </apex:actionFunction>
+
+                <apex:actionFunction status="loadingStatusRec" action="{!selectSuppInfo}" name="selectSuppInfoApexRec" rerender="supplementalInfoListAccount, supplementalInfoList, pageMessages"  oncomplete="adjustContainerWidth();">
+                    <apex:param name="selectedSuppInfoId" assignTo="{!selectedSuppInfoId}" value="" />
+                </apex:actionFunction>
+
+            </div>
+
+            <script type="text/javascript">
+                mixpanelModule.assingMPEvents();
+            </script>
+        </apex:form>
+
+      </section>
+
+    </apex:outputpanel>
+</apex:page>

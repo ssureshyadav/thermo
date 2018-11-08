@@ -1,0 +1,19 @@
+<apex:page controller="AutoQuoteDashboardController">
+    <apex:pageBlock title="AutoQuotes Today" rendered="{!displayVF}">
+        <i><apex:outputText rendered="{!noData}" value="There is no data to be display at this time."/></i>
+        <apex:pageBlockTable rendered="{!hasData}" value="{!oppRecords}" var="opp">    
+                <apex:column headerValue="Name"> 
+                   <apex:outputLink value="/{!opp.Id}" target="_blank">{!opp.Name}</apex:outputLink>              
+                </apex:column>    
+                <apex:column headerValue="Account Name"> 
+                   <apex:outputLink value="/{!opp.Account.Id}" target="_blank">{!opp.Account.Name}</apex:outputLink>              
+                </apex:column>     
+                <apex:column headerValue="Shipping City" value="{!opp.Account.ShippingCity}"/>
+                <apex:column headerValue="Shipping Postal Code" value="{!opp.Account.ShippingPostalCode}"/>
+                <apex:column headerValue="Shipping Country" value="{!opp.Account.ShippingCountry}"/>
+                <apex:column headerValue="Owner Name"> 
+                   <apex:outputLink value="/{!opp.OwnerId}" target="_blank">{!opp.Owner.Name}</apex:outputLink>              
+                </apex:column> 
+        </apex:pageBlockTable>
+    </apex:pageBlock>
+</apex:page>

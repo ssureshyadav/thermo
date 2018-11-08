@@ -1,0 +1,125 @@
+<aura:component >
+	<aura:attribute access="public" name="recommendation" type="Object" />
+	<aura:attribute access="public" name="isEmbedded" type="Boolean" default="true" />
+	<aura:attribute access="public" name="showRevenue" type="Boolean" default="false" />
+	<aura:attribute access="public" name="showScore" type="Boolean" default="false" />
+	<aura:attribute access="public" name="labels" type="Object" />
+	<aura:attribute access="public" name="namespacePrefix" type="String" default="" />
+
+
+	<aura:attribute access="private" name="progress" type="Integer" />
+	<aura:attribute access="private" name="valueToOutput" type="String" />
+	<aura:attribute access="private" name="displayTextClass" type="Boolean" />
+
+    <aura:registerEvent name="select" type="LBI:CardSelect"/>
+    <aura:registerEvent name="click" type="LBI:CardClick"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.init}"/>
+
+	<!-- this is the way to link to a resource, according sfdcfox here http://salesforce.stackexchange.com/questions/143630 -->
+	<!-- Needed for the icons/fonts -->
+	<ltng:require styles="{!'/resource/' + v.namespacePrefix + 'lightningAssets/styles/icons.css'}"/>
+
+	<span class="{!v.recommendation.isDisabled ? ' mutedCard' : ''}">
+
+		<span class="mycontent" aura:id="card"
+							workFlowType="{!v.recommendation.workflowType}"
+							onmouseover="{!c.handleMouseOver}"
+							onmouseout="{!c.handleMouseOut}">
+
+				<aura:if isTrue="{!v.recommendation.isNew}">
+					<!--the inline style in the <SPAN> is to avoid namespace issues with the images we're using-->
+					<span class="new" style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/status-banner.svg) center no-repeat'}">
+						{!v.labels.new}
+					</span>
+				</aura:if>
+
+        <div class="card-alignment">
+
+            <div class="icon-checkbox-toggle">
+                <span class="{!'icon glyphicon-sf-' + v.recommendation.playTypeClass}" aura:id="ptIcon"></span>
+                <!-- <span class="icon" aura:id="ptIcon"><aura:unescapedHtml value="{!v.recommendation.playTypeIcon}" /></span> -->
+               	<div class="checkbox hideMe" aura:id="ptCheckbox">
+
+                    <label for="{!v.recommendation.id}">
+                    	<ui:inputCheckbox click="{!c.handleSelectEvent}" aura:id="selectCheckbox" value="{!v.recommendation.isSelected}"/>
+                    	<!-- TODO: Replace with lightning:input when it allows for an empty label -->
+                      <!-- <apex:inputField styleClass="checkableSFDCId"
+                      					value="{!recom.IsSelected__c}"
+                      					html-sfdcid="{!recom.Id}"
+                      					html-workFlowType="{!recom.PlayRun__r.LatticeWorkflowSetting__r.Type__c}"
+                      					onchange="toggleCardSelect(this);processTypeOfSelectedCard(this);rerenderActionLinks();" /> -->
+                    </label>
+                </div>
+            </div>
+
+            <div class="card-details">
+        			<h4>
+                    <a title="View Details" style="color: #333435" onclick="{!c.handleClickEvent}">{!v.recommendation.displayName}</a>
+                </h4>
+        		</div>
+
+            <span class="rating-rank">
+	        		<div class="{!'progress-radial progress-' + v.progress}">
+		              <div class="{!v.displayTextClass}">{!v.valueToOutput}</div>
+		          </div>
+		    		</span>
+
+        </div>
+
+        <aura:if isTrue="{!v.isEmbedded}">
+	        <div class="description" title="{!v.recommendation.description}">
+	        	{!v.recommendation.description}
+	        </div>
+	    	</aura:if>
+
+	    <!--the inline styles in the <LI> are to avoid namespace issues with the images we're using-->
+        <ul class="highlights">
+        	<aura:if isTrue="{!v.showRevenue}">
+	            <li style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/divider-bg.png) right no-repeat;'}">
+                    {!v.labels.estRevenue}
+                    <span class="revenue">
+                        <lightning:formattedNumber value="{!v.recommendation.monetaryValue}" style="currency" maximumFractionDigits="0" />
+                    </span>
+	            </li>
+          </aura:if>
+
+	        <li style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/divider-bg.png) right no-repeat;'}">{!v.labels.daysActive}
+
+	            <span class="revenue">
+	                {!v.recommendation.ageInDays}
+	            </span>
+	        </li>
+
+	        <li style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/divider-bg.png) right no-repeat;'}">
+	            {!v.labels.actions}
+	            <aura:if isTrue="{! !v.recommendation.hasEmail &amp;&amp;
+	            				    !v.recommendation.hasCall &amp;&amp;
+	            				    !v.recommendation.hasTask &amp;&amp;
+	            				    !v.recommendation.hasEvent}">
+	            	<span class="created">
+	            		{!v.labels.none}
+	            	</span>
+	            </aura:if>
+
+	            <span class="actions-taken">
+	                <aura:if isTrue="{!v.recommendation.hasEmail}">
+	                  <lightning:icon class="icon-span" iconName="utility:email" size="x-small" alternativeText="Email Sent"/>
+	                </aura:if>
+	                <aura:if isTrue="{!v.recommendation.hasCall}">
+	                  <lightning:icon class="icon-span" iconName="utility:call" size="x-small" alternativeText="Call Made"/>
+	                </aura:if>
+	                <aura:if isTrue="{!v.recommendation.hasTask}">
+	                  <lightning:icon class="icon-span" iconName="utility:task" size="x-small" alternativeText="Task Recorded"/>
+	                </aura:if>
+	                <aura:if isTrue="{!v.recommendation.hasEvent}">
+	                  <lightning:icon class="icon-span" iconName="utility:event" size="x-small" alternativeText="Event Recorded"/>
+	                </aura:if>
+	            </span>
+	        </li>
+
+        </ul>
+
+			</span>
+	</span>
+</aura:component>

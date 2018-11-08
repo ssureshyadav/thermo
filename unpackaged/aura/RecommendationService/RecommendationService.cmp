@@ -1,0 +1,5 @@
+<aura:component controller="LBI.LCRecommendationBase" >
+	<aura:method name="getParams" action="{!c.getParams}">
+    </aura:method>
+
+</aura:component>

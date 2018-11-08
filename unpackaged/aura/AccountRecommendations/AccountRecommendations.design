@@ -1,0 +1,6 @@
+<design:component label="Lattice - Account Recommendations">
+	<sfdc:objects >
+        <sfdc:object >Account</sfdc:object>
+    </sfdc:objects>
+
+</design:component>

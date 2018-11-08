@@ -1,0 +1,7 @@
+<apex:page sidebar="{!showSidebar}"
+		   controller="LBI.DashboardSwitcherController"
+		   action="{!redirectUser}">
+
+<apex:pageMessages />
+
+</apex:page>

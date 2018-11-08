@@ -1,0 +1,59 @@
+<apex:page controller="DragDropAttach.GenerateURLController" id="pg" readOnly="true">
+    
+    <apex:form id="frm">
+        <script>
+            function fetchUrl() {
+                var val = document.getElementById('pg:frm:pb:pbs:pbsi:sel').value ;
+                
+                if (val != '') {
+                    jsfetchUrl(val);
+                }
+                else {
+                    alert('Please select an object');
+                }
+            }
+        </script>
+        <apex:actionRegion >
+        <apex:actionFunction name="jsfetchUrl" action="{!fieldList}" reRender="urlshow,error" status="mystatus">
+            <apex:param name="p1" value="" assignTo="{!selected}"/>
+        </apex:actionFunction>
+        </apex:actionRegion>
+        
+        <apex:pageBlock id="pb">
+        <apex:pageMessages id="error" />
+            <apex:pageBlockButtons location="Top" >
+                <apex:commandButton value="Generate Button URL" onclick="fetchUrl();return false;"/>
+                <span id="myactionstatus" >
+                    <apex:actionStatus id="mystatus">
+                        <apex:facet name="start" >
+                            <img src="/img/loading.gif" style="margin:-3px 5px"/>                       
+                        </apex:facet>
+                    </apex:actionStatus>
+                </span>
+            </apex:pageBlockButtons>
+                       
+            <apex:pageBlockSection columns="1" id="pbs">
+                <apex:pageBlockSectionItem id="pbsi"> 
+                    <apex:outputLabel value="Select Object"></apex:outputLabel> 
+                    <apex:selectList value="{!selected}" size="1" id="sel">
+                        <apex:selectOptions value="{!sobjects}"  > </apex:selectOptions>                        
+                    </apex:selectList>
+                 
+                </apex:pageBlockSectionItem>
+                
+                <apex:pageBlockSectionItem >
+                   <apex:outputLabel value="URL:"></apex:outputLabel> 
+                   <apex:outputPanel id="urlshow">
+                        <apex:outputText value="{!url}" ></apex:outputText> 
+                        <br/><br/>
+                        <apex:pageMessage rendered="{!url != ''}" severity="Info" strength="3" summary="Please copy the above url and paste in detail page button of selected object."></apex:pageMessage>
+                   </apex:outputPanel>   
+                   
+                </apex:pageBlockSectionItem>
+            </apex:pageBlockSection>
+            
+        </apex:pageBlock>
+            
+                     
+    </apex:form> 
+</apex:page>

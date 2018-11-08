@@ -1,0 +1,39 @@
+<apex:page sidebar="{!showSidebar}" 
+            standardController="LBI__Recommendation__c"
+            extensions="LBI.RecommendationsListController"
+            tabStyle="Lattice_Recommendations__tab">
+
+	<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__RecommendationListJavascript)}" />
+    <apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+
+    <script type="text/javascript">
+    	lejQuery(document).ready(function(){
+            window.addEventListener('message', function (evt) {
+            	console.log(evt.data);
+                if (evt && evt.data && evt.data.indexOf("IFrameResizeEvent") !== -1) {
+                    var height = evt.data.split('=')[1];
+                    var IFrame = document.getElementById('theIFrame');
+
+                    if (height && IFrame) {
+                        IFrame.style.height = (height == "auto" ? '' : height + 'px');
+                    }
+                }
+            });
+        });
+
+    </script>
+    <section class="content-main" id="bootstrap-lattice">
+    <apex:form id="theForm" >
+    	<apex:outputPanel id="recommendationDetailsPanel" layout="block" rendered="{!showRecommendationSection}" styleClass="lattice-details" >
+			<div class="col-md-4">
+			<apex:outputPanel id="iFrameHolder" >
+		        <iframe src="{!IFrameSource}" id="theIFrame" html-iframeselector="iframeselector" width="100%" height="500px" scrolling="no" />
+		    </apex:outputPanel>
+		    </div>
+		</apex:outputPanel>
+    </apex:form>
+    </section>
+
+</apex:page>

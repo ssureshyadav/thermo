@@ -1,0 +1,1228 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.ConfigurationPageController"
+			tabStyle="Lattice_Admin__tab"
+			docType="html-5.0"
+			action="{!onLoad}"
+			title="{!$Label.lbi__title_lattice_admin}"
+			id="theCGAdminPage">
+
+<apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+<!-- <apex:includeScript value="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.6.5/js/bootstrap-select.min.js" /> -->
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets,'js/addon.js')}" />
+<apex:includeScript value="{!$Resource.LBI__ConfigurationPage_js}" />
+
+<apex:includeScript value="{!URLFOR($Resource.LBI__select2,'js/select2.min.js')}" />
+<apex:stylesheet value="{!URLFOR($Resource.LBI__select2,'css/select2-bootstrap.min.css')}" />
+<apex:stylesheet value="{!URLFOR($Resource.LBI__select2,'css/select2.min.css')}" />
+
+<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}" />
+
+<script type="text/javascript" >
+	var isDirty = false;
+
+    var hidLeadRule1Id = '{!$Component.theForm.hidLeadRule1}';
+    var hidLeadRule2Id = '{!$Component.theForm.hidLeadRule2}';
+
+	var optionsRadioId = '{!$Component.theForm.optionsRadio}';
+
+    var hidLeadMappingsId = '{!$Component.theForm.hidLeadMappings}';
+    var hidRecommendationMappingsId = '{!$Component.theForm.hidRecommendationMappings}';
+    var hidHasSavedWorkedId = '{!$Component.theForm.hidHasSavedWorked}';
+
+    var hidAuthClientID = '{!$Component.theForm.authClientId}';
+    var hidAuthOTK = '{!$Component.theForm.authOTK}';
+    var hidLoginClientID = '{!$Component.theForm.loginClientId}';
+    var hidLoginOTK = '{!$Component.theForm.loginOTK}';
+
+    var hidErrorInfo = '{!$Component.theForm.errorInfo}';
+
+    var mainSaveButton = '{!$Component.theForm.mainSaveButton}';
+
+    var requiredLabel = '{!JSENCODE($Label.LAB_Required)}';
+    var selectFieldLabel = '{!JSENCODE($Label.LAB_SelectAField)}';
+    var chooseActionLabel = '{!JSENCODE($Label.LAB_ChooseAction)}';
+    var specifyValueLabel = '{!JSENCODE($Label.LAB_SpecifyValue)}';
+    var specifyConversionLabel = '{!JSENCODE($Label.LAB_SpecifyConversion)}';
+    var chooseOptionLabel = '{!JSENCODE($Label.LAB_ChooseAnOption)}';
+    var requiredFieldLabel = '{!JSENCODE($Label.AIS_FieldIsRequired)}';
+    var removeRowLabel = '{!JSENCODE($Label.LAB_RemoveRow)}';
+    var pleaseWaitLabel = '{!JSENCODE($Label.LAB_Wait)}';
+
+	var leadWorkflowId = '{!leadWorkflow.id}';
+	var recommendationWorkflowId = '{!recommendationWorkflow.id}';
+
+	var refreshAfterSave = false;
+
+    var recommendationFields;
+    var leadObjectFields;
+    var opportunityObjectFields;
+    var leadMappings;
+    var recommendationMappings;
+
+	function esc(myid) {
+		return '#' + myid.replace(/(:|\.)/g,'\\\\$1');
+	}
+	function setFocusOnLoad() {}
+
+    $( document ).ready(function() {
+    	$('.error').hide();
+    	$('[data-toggle="tooltip"]').tooltip();
+    	$('[data-toggle="popover"]').popover();
+
+    	checkSyncCheck();
+
+		$(document).on("scroll", onScroll);
+
+    	<apex:outputPanel layout="none" rendered="{!configStep = 'Config'}">
+      	getRuleValues();
+      	getObjectFields();
+      	setDirtyCheck();
+      	</apex:outputPanel>
+
+    })
+
+    function checkSyncCheck(){
+    	if($(".checkInput").prop("checked") == true){
+    		$(".checkElement, .checkElement > .btn").removeClass("disabled");
+    		$("select.checkElement").prop("disabled", false);
+	    } else {
+	    	$(".checkElement, .checkElement > .btn").addClass("disabled");
+	    	$("select.checkElement").prop("disabled", true);
+	    }
+    }
+
+	function getObjectFields() {
+		$(esc(mainSaveButton)).prop( "disabled", true );
+
+		Visualforce.remoting.Manager.invokeAction(
+	    	'{!$RemoteAction.ConfigurationPageController.getAllObjectFields}',
+	     	populateFieldsArray,
+	        {buffer: true, escape: true}
+		);
+	}
+
+	function getFieldMappings() {
+		$(esc(mainSaveButton)).prop( "disabled", true );
+
+		Visualforce.remoting.Manager.invokeAction(
+	    	'{!$RemoteAction.ConfigurationPageController.getAllFieldMappings}',
+	    	leadWorkflowId,
+	    	recommendationWorkflowId,
+	     	populateMappingArrays,
+	        {buffer: true, escape: true}
+		);
+	}
+
+	function validateRow(type, index, rowInfo) {
+		var targetObjectName = '';
+
+		if (type == 'lead') {
+			targetObjectName = 'Lead';
+		} else if (type == 'recommendation') {
+			targetObjectName = 'Opportunity';
+		}
+
+		Visualforce.remoting.Manager.invokeAction(
+	    	'{!$RemoteAction.ConfigurationPageController.validateFieldType}',
+	    	'Recommendation__c',
+	    	targetObjectName,
+	    	rowInfo.sourceField,
+	    	rowInfo.targetField,
+	    	rowInfo.isRequired,
+	    	rowInfo.defaultValue,
+	    	type,
+	    	index,
+	     	returnValidateRow,
+	        {buffer: true, escape: true}
+		);
+	}
+</script>
+
+
+<!-- This shows up when they don't have Lattice admin permissionset. -->
+<apex:outputpanel layout="none" rendered="{!!hasPermissionRequired}" >
+	 <apex:pageMessages id="noPermissionPageMessages" />
+</apex:outputpanel>
+
+
+<!-- This only renders when they DO have access. -->
+<apex:outputpanel layout="none" rendered="{!hasPermissionRequired}" >  <!-- Container for entire page. -->
+
+	<apex:form id="theForm">
+
+	<apex:inputHidden value="{!serializedLeadFieldMapping}" id="hidLeadMappings" />
+	<apex:inputHidden value="{!serializedRecommendationFieldMapping}" id="hidRecommendationMappings" />
+	<apex:inputHidden value="{!hasSavedWorkedSync}" id="hidHasSavedWorked" />
+
+	<apex:actionFunction action="{!doNothing}" name="reloadPage" />
+
+	<!-- LOGIN PAGE -->
+	<apex:outputPanel layout="none" rendered="{!configStep = 'Login'}">
+
+
+	<div id="lattice-admin">
+
+	    <div class="container-fluid">
+
+	      	<div class="row">
+
+	          	<div class="col-md-8 col-md-offset-2 install">
+	            	<div class="lattice-logo">
+	              		<apex:image url="{!URLFOR($Resource.LBI__installAssets, 'img/lattice-logo-white.svg')}" />
+	              		<span class="carrot"></span>
+	            	</div>
+	            	<h3>{!$Label.AIS_ConnectToLattice}</h3>
+
+	                <apex:outputPanel layout="inline" id="messagesLogin">
+	                    <apex:pageMessages id="messagesHolder" />
+	                </apex:outputPanel>
+
+	            	<div class="row">
+	              		<div class="col-md-5 col-md-offset-1 form-group">
+	                		<label for="clientIdForm">{!$Label.lbi__lab_clientid}:</label>
+					     	<apex:inputText value="{!oAuthClientId}" styleclass="form-control required-border" label="Client ID" id="loginClientId"/>
+							<div id="validation-loginClientId" class="required-text" style="display: none">{!$Label.LAB_EmptyField}</div>
+	              		</div>
+	              		<div class="col-md-5 form-group">
+	                		<label for="otkForm">{!$Label.LAB_OneTimeKey}:</label>
+					      	<apex:inputSecret value="{!oAuthOneTimeKey}" styleclass="form-control required-border" label="One Time Key:"  id="loginOTK"/>
+							<div id="validation-loginOTK" class="required-text" style="display: none">{!$Label.LAB_EmptyField}</div>
+	              		</div>
+
+	              		<div class="col-md-12">
+	                		<apex:commandButton id="submitToLogin" styleClass="btn btn-primary center-block" value="{!$Label.lbi__lab_connect}" action="{!loginToLatticeServer}" onclick="if (!validateLogin()) {return false;}"/>
+	              		</div>
+
+	            	</div>
+	          	</div>
+
+	        </div>
+
+	        <div class="row install-help">
+
+	          	<div class="col-md-8 col-md-offset-2">
+	            	<div class="col-md-6">
+	              		<h4>{!$Label.lbi__ais_tryitout}</h4>
+	              		<small><i><apex:outputText escape="false" value="{!$Label.lbi__ais_notquiteready}" /></i></small>
+	                	<apex:commandButton styleClass="btn btn-default btn-sm" value="{!$Label.lbi__ais_continuesetuptestmode}" action="{!useTestData}"  immediate="true" html-formnovalidate="formnovalidate" />
+	            	</div>
+
+	            	<div class="col-md-6">
+	              		<h4>{!$Label.lbi__ais_needhelp}</h4>
+	              		<small><i><apex:outputText escape="false" value="{!$Label.lbi__ais_latticeenginesintro}" /></i></small>
+	            	</div>
+	          	</div>
+
+	        </div>
+
+	    </div>
+
+	</div>
+	</apex:outputPanel>
+
+	<!-- CONFIG PAGE -->
+	<apex:outputPanel layout="none" rendered="{!configStep = 'Config'}">
+
+	<div id="lattice-admin">
+
+
+		<div class="container-fluid">
+			<div class="row">
+				<div class="col-md-12 header">
+
+					<div class="row">
+						<div class="col-md-12">
+							<h1>{!$Label.lbi__ais_title}</h1>
+						</div>
+					</div>
+					<div class="row">
+						<div class="col-md-8">
+							<h2>{!$Label.lbi__ais_cgapptitle}</h2>
+						</div>
+						<div class="col-md-4">
+							<apex:outputPanel layout="block" rendered="{!!isInstallPath}">
+								<c:AppChangeComponent id="appChangeComponent" useInAdminScreen="true" linkClassName="pull-right" performDMLOnComponent="true" />
+							</apex:outputPanel>
+						</div>
+					</div>
+
+				</div>
+			</div>
+		</div>
+
+
+		<nav id="sticky-nav">
+			<ul class="{!IF(isInstallPath,'admin-five','admin')}">
+
+				<li><a class="active" href="#application" data-scroll="applicationP">{!IF(isInstallPath,$Label.AIS_Integration,$Label.AIS_IntegrationAndTestData)}<em class="error" id="applicationError">!</em><span class="carrot"></span></a></li>
+				<li><a href="#plays" data-scroll="playsP">{!$Label.AIS_QualificationPath}<em class="error" id="playsError">!</em><span class="carrot"></span></a></li>
+				<li><a href="#leads" data-scroll="leadsP">{!$Label.AIS_LeadPath}<em class="error" id="leadsError">!</em><span class="carrot"></span></a></li>
+				<li><a href="#recommendations" data-scroll="recommendationsP">{!$Label.AIS_RecommendationPath}<em class="error" id="recommendationsError">!</em><span class="carrot"></span></a></li>
+				<apex:outputPanel layout="none" rendered="{!isInstallPath}">
+	            	<li><a href="#launch" data-scroll="launchP">{!$Label.AIS_Launch}<em class="error" id="launchError">!</em><span class="carrot"></span></a></li>
+				</apex:outputPanel>
+			</ul>
+
+			<apex:outputPanel layout="none" id="notificationHolder">
+				<apex:outputPanel layout="block" styleClass="message errorM3" html-role="alert" rendered="{!notificationsExist}" >
+					<table border="0" cellpadding="0" cellspacing="0" class="messageTable" style="padding:0px;margin:0px;">
+						<tbody>
+							<tr valign="top">
+								<td class="messageCell">
+									<div class="messageText">
+										<apex:outputText value="{!$Label.lbi__not_alerttext}" escape="false" />
+										<apex:outputLink styleClass="view-notifications" value="{!$Page.LBI__AdvancedConfigurationPage}?default=notification">{!$Label.lbi__not_viewnotifications}</apex:outputLink>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</apex:outputPanel>
+			</apex:outputPanel>
+			<apex:outputPanel layout="inline" id="messagesConfig">
+				<apex:pageMessages />
+				<apex:inputHidden value="{!errorInformation}" id="errorInfo" />
+			</apex:outputPanel>
+
+			<apex:outputPanel layout="block" styleClass="button-controls" rendered="{!!isInstallPath}">
+				<apex:commandButton action="{!saveWithDataLater}" value="{!$Label.lbi__lab_save}" styleClass="btn btn-primary pull-right" reRender="messagesConfig, notificationHolder, syncInformationPanel, authorizationPanel" oncomplete="processErrors();reAttachPicklists();" id="mainSaveButton" />
+				<apex:commandButton action="{!doNothing}" value="{!$Label.lbi__lab_cancel}" styleClass="btn btn-default pull-right" />
+				<apex:commandLink value="{!$Label.lbi__ais_advancedsettings}" action="{!goToAdvancedSettings}" styleClass="advanced-settings pull-right" onclick="if (! verifyDirty()) { return false;}" />
+			</apex:outputPanel>
+
+		</nav>
+
+		<div class="container-fluid">
+
+			<section class="top">
+				<apex:outputPanel layout="none" rendered="{! isInstallPath}">
+				<div id="applicationP">
+					<div class="row">
+						<div id="application" class="col-md-12">
+							<div class="section-title">
+								<h2>{!$Label.AIS_Integration}</h2>
+							</div>
+						</div>
+					</div><!-- End .row -->
+
+					<div class="row space">
+						<article class="col-md-12">
+							<!--Authenticated User -->
+							<apex:outputPanel layout="block" styleClass="row" rendered="{!! isTestData}">
+								<div class="col-md-1">
+									<span class="on"><apex:image url="{!URLFOR($Resource.LBI__installAssets, 'img/lattice-icon-blue.svg')}" /></span>
+								</div>
+								<div class="col-md-5">
+									<h3>{!$Label.lbi__ais_authenticated}</h3>
+								</div>
+							</apex:outputPanel>
+
+							<!-- Unauthenticated User -->
+							<apex:outputPanel layout="block" styleClass="row" rendered="{!isTestData}">
+								<div class="col-md-1">
+									<span class="off"><apex:image url="{!URLFOR($Resource.LBI__installAssets, 'img/lattice-icon-blue.svg')}" /></span>
+								</div>
+								<div class="col-md-5">
+									<h3>{!$Label.lbi__ais_notauthenticated}</h3>
+								</div>
+							</apex:outputPanel>
+
+						</article>
+					</div><!-- End .row -->
+				</div>
+				</apex:outputPanel>
+				<apex:outputPanel layout="none" rendered="{! !isInstallPath}">
+				<div id="applicationP">
+
+					<div class="row">
+
+						<!-- APPLICATION SECTION START -->
+						<div id="application" class="col-md-12">
+							<div class="section-title">
+								<h2>{!$Label.AIS_IntegrationAndTestData}</h2>
+								<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextIntegration}">?</a>
+							</div>
+						</div>
+
+					</div>
+					<div class="row space">
+
+						<article class="col-md-12">
+							<apex:outputPanel layout="inline" id="authorizationPanel">
+
+								<!--Authenticated User -->
+								<apex:outputPanel layout="block" styleClass="frequency-form" rendered="{!! isTestData}" id="syncInformationPanel">
+									<div class="row">
+										<div class="col-md-1">
+											<span class="on"><apex:image url="{!URLFOR($Resource.LBI__installAssets, 'img/lattice-icon-blue.svg')}" /></span>
+										</div>
+										<div class="col-md-11">
+											<div class="auth-inline">
+												<h3>{!$Label.lbi__ais_authenticated}</h3>
+												<apex:outputPanel layout="block" rendered="{!!isSyncRunning}" styleClass="pull-right">
+													<a href="#" id="changeUserLink" data-toggle="modal" data-target="#authenticate" onclick="hideAuthValidation('');">{!$Label.AIS_ChangeUser}...</a><a href="#" id="disconnectLink" data-toggle="modal" data-target="#disconnect">{!$Label.lbi__lab_disconnect}...</a>
+												</apex:outputPanel>
+											</div>
+
+											<apex:outputPanel layout="inline" rendered="{!isSyncRunning}">
+												<apex:outputText value="{!$Label.lbi__ais_syncrunning}"/>&nbsp;-&nbsp;
+												<apex:commandLink action="{!goToSyncDashboard}" styleClass="link-button">{!$Label.lbi__ais_gotosyncdashboard}</apex:commandLink>
+											</apex:outputPanel>
+
+
+											<!-- <p>{!$Label.AIS_LastSyncDate}:&nbsp;<c:FormattedDateTime datetimeValue="{!appSettingsWrapper.LastConnectionDate}" datetimeFormat="MM/dd/yyyy HH:mm" /></p> -->
+											<p>{!$Label.AIS_TokenExpirationDate}:&nbsp;
+												<strong>
+													<c:FormattedDateTime datetimeValue="{!tokenExpirationDate}" datetimeFormat="MM/dd/yyyy" />
+												</strong>
+											</p>
+
+											<div class="frequency">
+												<span class="checkbox">
+													<label>
+														<apex:inputCheckbox value="{!syncEveryHour}" disabled="{!isSyncRunning}" id="syncHour" styleClass="checkInput">
+															<apex:actionSupport event="onclick" action="{!toggleScheduledJob}" reRender="messagesConfig, authorizationPanel" oncomplete="reAttachPicklists();checkSyncCheck();" />
+														</apex:inputCheckbox><span class="checkElement disabled">{!$Label.lbi__ais_syncfrequency}</span>
+													</label>
+												</span>
+
+												<apex:outputPanel layout="none">
+													&nbsp;
+													<apex:selectList styleClass="selectpicker dirtyControl checkElement disabled" value="{!syncFrequency}" disabled="{!isSyncRunning}" id="syncFrequency" multiselect="false">
+														<apex:selectOptions value="{!syncFrequencies}" />
+
+														<apex:actionSupport event="onchange" action="{!toggleScheduledJob}" reRender="messagesConfig, authorizationPanel" oncomplete="reAttachPicklists();checkSyncCheck();" />
+													</apex:selectList>
+													<apex:outputPanel layout="none" rendered="{!syncEveryHour && syncFrequency == 'Week'}">
+													<span class="checkElement disabled">{!$Label.LAB_On}</span>&nbsp;
+													<apex:selectList id="daysDropdown" value="{!selectedDay}" styleClass="selectpicker dirtyControl checkElement disabled" disabled="disabled">
+														<apex:selectOptions value="{!days}" />
+
+														<apex:actionSupport event="onchange" action="{!toggleScheduledJob}" reRender="messagesConfig, authorizationPanel" oncomplete="reAttachPicklists();checkSyncCheck();" />
+													</apex:selectList>
+													</apex:outputPanel>
+													<apex:outputPanel layout="none" rendered="{!syncEveryHour && syncFrequency != 'Hour'}" >
+													<span class="checkElement disabled">{!$Label.LAB_At}</span>&nbsp;
+													<apex:selectList id="hoursDropdown" value="{!selectedHour}" styleClass="selectpicker dirtyControl checkElement disabled" html-data-size="10" disabled="disabled">
+														<apex:selectOptions value="{!hours}" />
+
+														<apex:actionSupport event="onchange" action="{!toggleScheduledJob}" reRender="messagesConfig, authorizationPanel" oncomplete="reAttachPicklists();checkSyncCheck();" />
+													</apex:selectList>
+													</apex:outputPanel>
+												</apex:outputPanel>
+											</div>
+
+											<apex:outputText styleClass="disabled" rendered="{!!hasRefreshToken}" value="{!$Label.lbi__sync_norefreshtoken}" />
+
+											<apex:outputPanel layout="none" rendered="{!!isSyncRunning && hasRefreshToken}" >
+												<div class="sync-actions" style="margin-bottom: 4em">
+													<apex:commandButton action="{!getSyncDataRecordCount}" reRender="messagesConfig, authorizationPanel, syncNewDataPanel"
+																status="status" styleClass="btn btn-default" oncomplete="openSyncModal(false);"
+																value="{!$Label.lbi__ais_syncdatanow}"/>&nbsp;&nbsp;
+
+													<apex:commandButton action="{!getSyncDataRecordCount}" reRender="messagesConfig, authorizationPanel, syncMetadataOnlyPanel"
+																		status="status" styleClass="btn btn-default" oncomplete="openSyncMetadataModal(false);"
+																		value="{!$Label.lbi__ais_syncmetadataonly}"/>&nbsp;&nbsp;
+
+													<apex:commandLink action="{!goToSyncDashboard}">{!$Label.lbi__ais_synchistory}</apex:commandLink>
+												</div>
+
+											</apex:outputPanel>
+
+										</div><!-- End .col-md-11 -->
+									</div>
+								</apex:outputPanel>
+
+								<!-- Unauthenticated User - notes about what links to show -->
+								<apex:outputPanel layout="block" styleClass="row" rendered="{!isTestData}">
+									<div class="col-md-1">
+										<span class="off"><apex:image url="{!URLFOR($Resource.LBI__installAssets, 'img/lattice-icon-blue.svg')}" /></span>
+									</div>
+									<div class="col-md-11">
+										<h3>{!$Label.lbi__ais_notauthenticated}</h3>
+										<apex:outputPanel layout="none" rendered="{!!hasCreatedTestData && !isSyncRunning }">
+											<p class="primary-auth-button">
+												<a href="#" data-toggle="modal" data-target="#authenticate" class="btn btn-default" onclick="hideAuthValidation('');">{!$Label.lbi__ais_authenticatenow}...</a>
+											</p>
+
+											<a href="#" data-toggle="modal" data-target="#populateTestData" class="auth-link">{!$Label.lbi__ais_populatetestdata}...</a>
+										</apex:outputPanel>
+
+										<apex:outputPanel layout="none" rendered="{!hasCreatedTestData && !isSyncRunning }">
+
+											<p class="primary-auth-button">
+												<apex:commandLink action="{!getTestDataRecordCount}" status="status" rerender="messages, authenticatePanel" styleClass="btn btn-default" oncomplete="openAuthenticateModal();">{!$Label.lbi__ais_authenticatenow}...</apex:commandLink>
+											</p>
+
+											<apex:commandLink action="{!getTestDataRecordCount}" status="status" rerender="messages, deleteTestDataPanel" styleClass="link-button auth-link" oncomplete="openDeleteModal();" rendered="{!!isSyncRunning}">{!$Label.lbi__ais_deletetestdata}...</apex:commandLink>
+
+										</apex:outputPanel>
+
+										<apex:outputPanel layout="none" rendered="{!isSyncRunning}">
+
+											<p>
+												<apex:outputText value="{!$Label.lbi__ais_syncrunning}"/>&nbsp;-&nbsp;
+												<apex:commandLink action="{!goToSyncDashboard}" styleClass="link-button">{!$Label.lbi__ais_gotosyncdashboard}</apex:commandLink>
+											</p>
+
+										</apex:outputPanel>
+
+										<apex:outputPanel layout="none" rendered="{!!isSyncRunning}">
+
+											<apex:commandLink action="{!goToSyncDashboard}" styleClass="link-button">{!$Label.lbi__ais_synchistory}</apex:commandLink>
+
+										</apex:outputPanel>
+									</div>
+								</apex:outputPanel>
+							</apex:outputPanel><!-- End #authorizationPanel -->
+						</article>
+
+					</div>
+
+				</div><!-- End #applicationP -->
+				</apex:outputPanel>
+
+				<div id="playsP" class="col-md-12">
+				<!-- PLAY TYPE SECTION START -->
+				<div id="plays" class="col-md-12">
+					<div class="section-title">
+						<h2>{!$Label.AIS_QualificationPathPlayType}</h2>
+						<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextQualificationPath}">?</a>
+					</div>
+				</div>
+
+				<article class="col-md-8 space">
+					<apex:outputPanel layout="block" styleClass="row" id="playTypeRepeat">
+						<apex:repeat value="{!playTypes}" var="pt">
+							<div class="col-md-6 form-group">
+								<label>{!pt.LBI__PlayTypeName__c}</label>
+								<apex:selectList id="playTypeDropdown" value="{!pt.LBI__Workflow__c}" styleClass="selectpicker required-border dirtyControl prospectingSelect">
+									<apex:selectOptions value="{!playTypeOptions}" />
+
+									<apex:actionSupport action="{!enableLead}" event="onchange" reRender="messages, leadEnabledCheckbox, leadWorkflowPanel" oncomplete="redrawPicklists();"/>
+								</apex:selectList>
+							</div>
+						</apex:repeat>
+					</apex:outputPanel>
+				</article>
+
+				</div>
+
+				<div id="leadsP" class="col-md-12">
+				<!-- LEADS SECTION START -->
+				<div id="leads" class="col-md-12">
+					<div class="section-title">
+						<h2>{!$Label.AIS_LeadPath}</h2>
+						<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextLeadPath}">?</a>
+					</div>
+				</div>
+
+				<article class="col-md-8 space">
+
+					<div class="row">
+						<div class="col-md-12">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox value="{!appSettingsWrapper.LeadWorkflowEnabled}" id="leadEnabledCheckbox" styleClass="dirtyControl leadEnabledCheckbox" >
+										<apex:actionSupport event="onclick" reRender="leadWorkflowPanel" oncomplete="redrawPicklists();" />
+									</apex:inputCheckbox>
+									<apex:outputText escape="false" value="{!$Label.lbi__ais_enableleadbased}" />
+								</label>
+							</div>
+						</div>
+					</div>
+
+
+					<apex:outputPanel layout="inline" id="leadWorkflowPanel">
+					<apex:outputPanel layout="none" rendered="{!appSettingsWrapper.LeadWorkflowEnabled}" styleClass="community-enabled">
+
+					<div class="row">
+						<div class="col-md-6 default-owner">
+							<label for="exampleInputEmail1">{!$Label.AIS_LeadsDefaultOwner}:
+	                  			<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextDefaultOwner}">?</a>
+	                  		</label>
+
+	                  		<apex:inputField styleClass="form-control required-border dirtyControl" value="{!leadWorkflow.LBI__DefaultUser__c}" label="" id="defuser"/>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-6">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox id="showCardsOnAccount" styleClass="dirtyControl" value="{!leadWorkflow.LBI__ShowCardsOnAccount__c}" /> {!$Label.AIS_ShowCardsOnAccount}
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-12">
+							<h3 class="sub-section">{!$Label.AIS_SalesRepActions}
+								<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextSalesRepActions}">?</a>
+							</h3>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-3">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox id="disableEmailLead" styleClass="dirtyControl" value="{!leadWorkflow.LBI__ShowEmailAction__c}" /> {!$Label.lbi__ais_sendemail}
+								</label>
+							</div>
+						</div>
+
+						<div class="col-md-3">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox id="disableLogLead" styleClass="dirtyControl" value="{!leadWorkflow.LBI__ShowCallAction__c}" /> {!$Label.lbi__ais_logcall}
+								</label>
+							</div>
+						</div>
+
+						<div class="col-md-3">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox id="disableMeetingLead" styleClass="dirtyControl" value="{!leadWorkflow.LBI__ShowEventAction__c}" /> {!$Label.lbi__rep_set_up_meeting_new}
+								</label>
+							</div>
+						</div>
+
+						<div class="col-md-3">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox id="disableTaskLead" styleClass="dirtyControl" value="{!leadWorkflow.LBI__ShowTaskAction__c}" /> {!$Label.AIS_NewTask}
+								</label>
+							</div>
+						</div>
+
+					</div>
+
+					<div class="row">
+						<div class="col-md-12">
+							<h3 class="sub-section">{!$Label.AIS_StatusMapping}
+							<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextStatusMapping}">?</a>
+							</h3>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-7">
+							<span class="help-text">{!$Label.AIS_SalesforceLeadStatus}</span>
+						</div>
+
+						<div class="col-md-5 form-group">
+							<span class="help-text">{!$Label.AIS_LatticeRecommendationStatus}</span>
+						</div>
+					</div>
+					<apex:repeat value="{!statusMappings}" var="status">
+						<div class="row">
+							<div class="col-md-5">
+								<p>{!status.LeadStatus__c}</p>
+							</div>
+
+							<div class="col-md-2 text-center">
+								<span class="glyphicon glyphicon-arrow-right" aria-hidden="true"></span>
+							</div>
+
+							<div class="col-md-5 form-group">
+								<apex:inputField id="recomStatusSelect" styleClass="selectpicker required-border dirtyControl selSelect_{!SUBSTITUTE(status.LBI__LeadStatus__c, ' ', '')}" value="{!status.LBI__RecommendationStatus__c}" />
+							</div>
+						</div>
+
+					</apex:repeat>
+
+					<div class="row">
+						<div class="col-md-12">
+							<h3 class="sub-section">{!$Label.AIS_FieldMapping}
+							<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextFieldMapping}">?</a>
+							</h3>
+						</div>
+					</div>
+
+					<div class="row">
+						<!-- GROUP TITLES -->
+						<div class="col-md-5">
+							<span class="help-text">{!$Label.AIS_SalesforceLeadFields}</span>
+						</div>
+						<div class="col-md-2">
+							<p> </p>
+						</div>
+
+						<div class="col-md-5 form-group">
+							<span class="help-text">{!$Label.AIS_LatticeRecommendationFields}</span>
+						</div>
+					</div>
+
+					<span id="leadMappingFields">
+
+					</span>
+
+					<div class="row">
+						<div class="col-md-5">
+						</div>
+						<div class="col-md-2 text-center">
+						</div>
+						<div class="col-md-5 form-group">
+							<a class="btn btn-default pull-right" role="button" onclick="addRow('lead')" id="addRowLead">{!$Label.LAB_AddRow}</a>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-12">
+							<span class="help-text">{!$Label.AIS_SelectContactOptions}:</span>
+						</div>
+					</div>
+
+					<div class="row">
+
+						<div class="col-md-6">
+	                        <div class="helper-graphic">
+	                            <em>These fields will be mapped:</em>
+	                            <p>First Name<span class="glyphicon glyphicon-arrow-left pull-right" aria-hidden="true"></span></p>
+	                            <p>Last Name<span class="glyphicon glyphicon-arrow-left pull-right" aria-hidden="true"></span></p>
+	                            <p>Email<span class="glyphicon glyphicon-arrow-left pull-right" aria-hidden="true"></span></p>
+	                            <p>Phone<span class="glyphicon glyphicon-arrow-left pull-right" aria-hidden="true"></span></p>
+	                            <p>Address<span class="glyphicon glyphicon-arrow-left pull-right" aria-hidden="true"></span></p>
+	                        </div>
+						</div>
+
+						<div class="col-md-6">
+							<apex:inputHidden value="{!leadWorkflow.LBI__Rule1__c}" id="hidLeadRule1" />
+							<apex:inputHidden value="{!leadWorkflow.LBI__Rule2__c}" id="hidLeadRule2" />
+
+							<div class="radio">
+								<label>
+									<input type="radio" name="leadRule" id="leadRule1" value="Rule1" onclick="setRuleValues();" />
+									{!$Label.AIS_SalesforceAssociatedAccount}
+								</label>
+							</div>
+
+							<div class="nested-options">
+								<label>{!$Label.AIS_UseContactNameFrom}:</label>
+
+								<apex:selectRadio value="{!leadWorkflow.LBI__ContactOption__c}" styleClass="radio dirtyControl" layout="pageDirection" id="optionsRadio">
+	                  				<apex:selectOptions value="{!contactOptions}"/>
+	                			</apex:selectRadio>
+
+								<div class="checkbox">
+									<label>
+										<input type="checkbox" name="optionsRadios" id="leadRule2Check" onclick="setRuleValues();" class="dirtyControl"/>
+										{!$Label.AIS_IfNoContactAvailable}
+									</label>
+								</div>
+							</div>
+
+							<div class="radio">
+								<label>
+									<input type="radio" name="leadRule" id="leadRule2" value="Rule2" onclick="setRuleValues();" class="dirtyControl"/>
+									{!$Label.AIS_LatticeAccount}
+								</label>
+							</div>
+						</div>
+
+					</div>
+
+					</apex:outputPanel>
+					</apex:outputPanel>
+
+				</article>
+				</div>
+
+				<!-- RECOMMENDATIONS SECTION START -->
+				<div id="recommendationsP" class="col-md-12">
+				<div id="recommendations" class="col-md-12">
+					<div class="section-title">
+						<h2>{!$Label.AIS_RecommendationPath}</h2>
+						<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextRecommendationPath}">?</a>
+					</div>
+				</div>
+
+				<article class="col-md-8 space">
+				<div class="row">
+					<div class="col-md-12">
+						<h3 class="sub-section">{!$Label.AIS_SalesRepActions}
+							<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextSalesRepActionsRecommendations}">?</a>
+						</h3>
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="col-md-3">
+						<div class="checkbox">
+							<label>
+								<apex:inputCheckbox id="disableEmailRec" styleClass="dirtyControl" value="{!recommendationWorkflow.LBI__ShowEmailAction__c}" /> {!$Label.lbi__ais_sendemail}
+							</label>
+						</div>
+					</div>
+
+					<div class="col-md-3">
+						<div class="checkbox">
+							<label>
+								<apex:inputCheckbox id="disableLogRec" styleClass="dirtyControl" value="{!recommendationWorkflow.LBI__ShowCallAction__c}" /> {!$Label.lbi__ais_logcall}
+							</label>
+						</div>
+					</div>
+
+					<div class="col-md-3">
+						<div class="checkbox">
+							<label>
+								<apex:inputCheckbox id="disableMeetingRec" styleClass="dirtyControl" value="{!recommendationWorkflow.LBI__ShowEventAction__c}" /> {!$Label.lbi__rep_set_up_meeting_new}
+							</label>
+						</div>
+					</div>
+
+					<div class="col-md-3">
+						<div class="checkbox">
+							<label>
+								<apex:inputCheckbox id="disableTaskRec" styleClass="dirtyControl" value="{!recommendationWorkflow.LBI__ShowTaskAction__c}" /> {!$Label.AIS_NewTask}
+							</label>
+						</div>
+					</div>
+
+				</div>
+
+	<!-- SK 1/7/16 - Per COD-729
+					<div class="row">
+						<div class="col-md-12">
+							<span class="help-text">{!$Label.LAB_Default}</span>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-6 form-group">
+							<apex:inputField styleClass="form-control dirtyControl" value="{!recommendationWorkflow.ConvertToOppActionName__c}" />
+						</div>
+						<div class="col-md-6 form-group">
+							<apex:inputField styleClass="form-control dirtyControl" value="{!recommendationWorkflow.DisqualifyActionName__c}" />
+						</div>
+					</div>
+	-->
+					<div class="row">
+						<div class="col-md-12">
+							<h3 class="sub-section">{!$Label.LAB_Settings}
+							</h3>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-6 form-group">
+							<label for="exampleInputEmail1">{!$Label.AIS_SetYourRecommendationsDefaultOwner}:
+	                            <a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextSetYourRecommendationsDefaultOwner}">?</a>
+	                        </label>
+
+	              			<apex:inputField styleClass="form-control required-border dirtyControl default-owner" value="{!recommendationWorkflow.LBI__DefaultUser__c}" label="" id="recDefUser"/>
+						</div>
+						<div class="col-md-6">
+							<label for="exampleInputEmail1">{!$Label.AIS_ExpireRecommendationsAfter}:
+	                            <a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextExpireRecommendationsAfter}">?</a>
+	                        </label>
+	                        <div class="row">
+	                            <div class="col-md-2" style="padding-right: 0;">
+	                                <div class="form-group">
+	                           		   <apex:inputText value="{!expirationNumberValue}" required="true" styleClass="form-control dirtyControl" />
+	                                </div>
+	                            </div>
+	                            <div class="col-md-10">
+	                               	<apex:selectList value="{!expirationTimeType}" multiselect="false" size="1" styleClass="selectpicker dirtyControl" >
+	                               		<apex:selectOption itemValue="{!$Label.lbi__lab_days}" itemLabel="{!$Label.lbi__lab_days}" />
+	                               		<apex:selectOption itemValue="{!$Label.lbi__lab_weeks}" itemLabel="{!$Label.lbi__lab_weeks}" />
+	                               		<apex:selectOption itemValue="{!$Label.lbi__lab_months}" itemLabel="{!$Label.lbi__lab_months}" />
+	                               	</apex:selectList>
+	                            </div>
+	                        </div>
+						</div>
+
+						<div class="col-md-12 form-group">
+							<div class="checkbox">
+								<label>
+									<apex:inputCheckbox styleClass="dirtyControl" value="{!recommendationWorkflow.LBI__UseContactAsPrimary__c}" />
+									<apex:outputText escape="false" value="{!$Label.lbi__ais_usecontactasprimary}" />
+								</label>
+							</div>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-12">
+							<h3 class="sub-section">{!$Label.AIS_FieldMapping}
+							<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextFieldMappingRecommendations}">?</a>
+							</h3>
+						</div>
+					</div>
+
+					<div class="row">
+
+						<!-- Group -->
+						<div class="col-md-5">
+							<span class="help-text">{!$Label.AIS_SalesforceOpportunityFields}</span>
+						</div>
+
+						<div class="col-md-2">
+							<p> </p>
+						</div>
+
+						<div class="col-md-5">
+							<span class="help-text">{!$Label.AIS_LatticeRecommendationFields}</span>
+						</div>
+					</div>
+
+					<span id="recommendationMappingFields">
+					</span>
+
+
+					<div class="row">
+						<!-- Group -->
+						<div class="col-md-5">
+						</div>
+
+						<div class="col-md-2 text-center">
+						</div>
+
+						<div class="col-md-5 form-group">
+						</div>
+
+						<a class="btn btn-default pull-right" role="button" onclick="addRow('recommendation')" id="addRowRec">{!$Label.LAB_AddRow}</a>
+					</div>
+				</article>
+				</div>
+
+				<apex:outputPanel layout="none" rendered="{!isInstallPath}">
+				<!-- LAUNCH SECTION START -->
+				<div id="launchP" class="col-md-12">
+				<div id="launch" class="col-md-12">
+					<div class="section-title">
+						<h2>{!$Label.AIS_Launch}</h2>
+						<a tabindex="0" class="helper" role="button" data-toggle="popover" data-trigger="focus" data-content="{!$Label.AIS_HelpTextLaunch}">?</a>
+					</div>
+				</div>
+
+				<article class="col-md-8">
+					<div class="row">
+						<p class="col-md-6">
+							<apex:commandButton styleClass="btn btn-success btn-lg btn-block" action="{!saveWithDataNow}" value="{!$Label.lbi__ais_launchtestdatanow}" rendered="{!isTestData}" reRender="messagesConfig, syncNewDataPanel, hidHasSavedWorked, notificationHolder, syncInformationPanel" oncomplete="processErrorsSave();"/>
+							<apex:commandButton id="launchNowButton" styleClass="btn btn-success btn-lg btn-block" action="{!saveAndSyncData}" value="{!$Label.lbi__ais_launchnow}" reRender="messagesConfig, syncNewDataPanel, hidHasSavedWorked, notificationHolder, syncInformationPanel" status="status" oncomplete="openSyncModal(true);" rendered="{!!isTestData}"/>
+						</p>
+						<p class="col-md-6">
+							<apex:commandButton id="launchLaterButton"  styleClass="btn btn-default btn-lg btn-block" action="{!saveWithDataLater}" value="{!IF(isTestData, $Label.lbi__ais_launchtestdatalater, $Label.lbi__ais_launchlater)}" reRender="messagesConfig, notificationHolder, syncInformationPanel" oncomplete="processErrorsSave();" />
+						</p>
+					</div>
+				</article>
+				</div>
+				</apex:outputPanel>
+
+
+			</section>
+
+
+			<!-- MODALS! -->
+
+			<!-- Authenticate -->
+			<div id="authenticate" class="modal fade" role="dialog">
+				<apex:outputPanel layout="block" styleClass="modal-dialog" id="authenticatePanel">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.AIS_ConnectToLattice}</h3>
+						</div>
+						<div class="modal-body">
+							<apex:outputPanel layout="none" rendered="{!hasCreatedTestData}">
+								<p>{!$Label.WarningPreConnection}</p>
+								<p>{!$Label.AIS_ObjectDeleteCounts}:</p>
+
+								<div class="row">
+									<span class="col-sm-6 name">{!$ObjectType.Task.LabelPlural}</span>
+									<span class="col-sm-6 number">{!numberOfTasksToDelete}</span>
+								</div>
+
+								<div class="row">
+									<span class="col-sm-6 name">{!$ObjectType.Lead.LabelPlural}</span>
+									<span class="col-sm-6 number">{!numberOfLeadsToDelete}</span>
+								</div>
+
+								<div class="row">
+									<span class="col-sm-6 name">{!$ObjectType.Account.LabelPlural}</span>
+									<span class="col-sm-6 number">{!numberOfAccountsToDelete}</span>
+								</div>
+
+								<div class="row">
+									<span class="col-sm-6 name">{!$ObjectType.Contact.LabelPlural}</span>
+									<span class="col-sm-6 number">{!numberOfContactsToDelete}</span>
+								</div>
+
+								<div class="row">
+									<span class="col-sm-6 name">{!$ObjectType.Recommendation__c.LabelPlural}</span>
+									<span class="col-sm-6 number">{!numberOfRecommendationsToDelete}</span>
+								</div>
+
+								<div class="row">
+									<span class="col-sm-6 name">{!$ObjectType.Play__c.LabelPlural}</span>
+									<span class="col-sm-6 number">{!numberOfPlaysToDelete}</span>
+								</div>
+
+								<p></p>
+							</apex:outputPanel>
+
+							<div class="row">
+								<div class="col-md-5 col-md-offset-1 form-group">
+									<label for="exampleInputEmail1">{!$Label.lbi__lab_clientid}:</label>
+									<apex:inputText value="{!oAuthClientId}" styleclass="form-control required-border" id="authClientId"/>
+									<div id="validation-authClientId" class="required-text" style="display: none">{!$Label.LAB_EmptyField}</div>
+								</div>
+								<div class="col-md-5 form-group">
+									<label for="exampleInputEmail1">{!$Label.LAB_OneTimeKey}:</label>
+					      			<apex:inputSecret value="{!oAuthOneTimeKey}"  styleclass="form-control required-border" id="authOTK" />
+									<div id="validation-authOTK" class="required-text" style="display: none">{!$Label.LAB_EmptyField}</div>
+								</div>
+							</div>
+
+						</div>
+						<div class="modal-footer">
+							<button id="authCancelButton" type="button" class="btn btn-default deleteToDisable" onclick="closeModals();">{!$Label.lbi__lab_cancel}</button>
+	                		<apex:commandButton id="authButton" styleClass="btn btn-primary deleteToDisable" value="{!$Label.lbi__lab_connect}" action="{!loginToLatticeServer}" reRender="messagesConfig, authorizationPanel, playTypeRepeat, authenticatePanel, notificationHolder, syncInformationPanel" oncomplete="reAttachPicklists();checkSyncCheck();closeModals();processErrors();" status="status" onclick="if (!validateAuthenticate('')) {return false;}"  />
+						</div>
+					</div>
+
+				</apex:outputPanel>
+			</div>
+			<!-- End Authenticate -->
+
+			<!-- Disconnect -->
+			<div id="disconnect" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.lbi__lab_disconnect}</h3>
+						</div>
+						<div class="modal-body">
+							<p>{!$Label.ReviewPreDisconnect}</p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" onclick="closeModals();">{!$Label.lbi__lab_cancel}</button>
+							<apex:commandButton id="disconnectNow" styleClass="btn btn-primary" value="{!$Label.lbi__lab_disconnect}" action="{!disconnectFromLatticeServer}" reRender="messagesConfig, authorizationPanel" oncomplete="closeModals();processErrors();" status="status" />
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- End Disconnect -->
+
+			<!-- Sync New Data -->
+			<apex:outputPanel layout="inline" id="syncMetadataOnlyPanel">
+			<div id="syncMetadataOnly" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.lbi__ais_syncmetadataonly}</h3>
+						</div>
+						<div class="modal-body">
+							<p>{!$Label.AIS_ReviewPreSync}:</p>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Play__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfPlays}</span>
+							</div>
+
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" onclick="closeModals();">{!$Label.lbi__lab_cancel}</button>
+							<apex:commandButton styleclass="btn btn-primary deleteToDisable" value="{!$Label.lbi__ais_sync}" action="{!syncWithLatticeMetadataOnly}"
+												reRender="messagesConfig, authorizationPanel, poller" status="status"
+												oncomplete="closeModals();processErrorsSaveConditional();" onclick="disableDeleteButtons();"  />
+						</div>
+					</div>
+
+				</div>
+			</div>
+			</apex:outputPanel>
+
+			<!-- Sync New Data -->
+			<apex:outputPanel layout="inline" id="syncNewDataPanel">
+			<div id="syncNewData" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.AIS_SyncNewData}</h3>
+						</div>
+						<div class="modal-body">
+							<p>{!$Label.AIS_ReviewPreSync}:</p>
+
+							<apex:outputPanel layout="none" rendered="{!showResumeMessage}">
+								<apex:outputText value="{!$Label.lbi__admin_resume_sync}" />
+							</apex:outputPanel>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.AccountExtension__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfAccountExtensions}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Play__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfPlays}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Recommendation__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfRecommendations}</span>
+							</div>
+
+						</div>
+
+
+
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" onclick="closeModals();">{!$Label.lbi__lab_cancel}</button>
+							<apex:commandButton styleclass="btn btn-primary deleteToDisable" value="{!$Label.lbi__ais_sync}" action="{!syncWithLattice}" reRender="messagesConfig, authorizationPanel, poller" status="status" oncomplete="closeModals();processErrorsSaveConditional();" onclick="disableDeleteButtons();"  />
+						</div>
+					</div>
+
+				</div>
+			</div>
+			</apex:outputPanel>
+
+			<!-- "Populate" Test Data -->
+			<div id="populateTestData" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.lbi__ais_populatetestdata}</h3>
+						</div>
+						<div class="modal-body">
+							<p>{!$Label.AIS_ReviewPrePopulate}</p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default deleteToDisable" onclick="closeModals();">{!$Label.lbi__lab_cancel}</button>
+							<apex:commandButton styleClass="btn btn-primary deleteToDisable" value="{!$Label.lbi__ais_populatetestdata}" action="{!saveWithDataNow}" reRender="messagesConfig, authorizationPanel, poller" onclick="disableDeleteButtons();" oncomplete="closeModals();processErrors();" status="status" />
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- End Populate Test Data -->
+
+			<!-- Delete Test Data -->
+			<div id="deleteTestData" class="modal fade" role="dialog">
+				<apex:outputPanel layout="block" styleClass="modal-dialog" id="deleteTestDataPanel">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.AIS_DeleteTestData}</h3>
+						</div>
+						<div class="modal-body">
+							<p>{!$Label.AIS_ReviewPreDelete}</p>
+
+							<p>{!$Label.AIS_ObjectDeleteCounts}:</p>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Task.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfTasksToDelete}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Lead.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfLeadsToDelete}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Account.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfAccountsToDelete}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.LatticeAcctExtFieldDescribe__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfFielDescribesToDelete}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Contact.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfContactsToDelete}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Recommendation__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfRecommendationsToDelete}</span>
+							</div>
+
+							<div class="row">
+								<span class="col-sm-6 name">{!$ObjectType.Play__c.LabelPlural}</span>
+								<span class="col-sm-6 number">{!numberOfPlaysToDelete}</span>
+							</div>
+
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default deleteToDisable" onclick="closeModals();">{!$Label.lbi__lab_cancel}</button>
+							<apex:commandButton styleclass="btn btn-primary deleteToDisable" value="{!$Label.lbi__lab_delete}" action="{!deleteTestData}" reRender="messagesConfig, authorizationPanel" status="status" oncomplete="closeModals();processErrorsSave();" onclick="disableDeleteButtons();"  />
+						</div>
+					</div>
+
+				</apex:outputPanel>
+			</div>
+			<!-- End Delete Test Data -->
+
+			<!-- Dirty Screen -->
+			<div id="dirtyScreen" class="modal fade" role="dialog">
+				<div class="modal-dialog">
+
+					<!-- Modal content-->
+					<div class="modal-content">
+						<div class="modal-header">
+							<button type="button" class="close" data-dismiss="modal">&times;</button>
+							<h3 class="modal-title">{!$Label.AIS_ScreenIsDirty}</h3>
+						</div>
+						<div class="modal-body">
+							<p>{!$Label.AIS_ScreenIsDirtyExplanation}</p>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-default" onclick="closeModals();">{!$Label.LAB_StayOnPage}</button>
+							<apex:commandButton styleClass="btn btn-primary" value="{!$Label.lbi__lab_discardchanges}" action="{!goToAdvancedSettings}" />
+						</div>
+					</div>
+				</div>
+			</div>
+			<!-- End Dirty Screen -->
+		</div>
+
+	</div>
+
+	</apex:outputPanel>
+
+
+	<apex:outputPanel layout="none" id="poller">
+		<apex:actionPoller action="{!checkForSyncInProgress}" reRender="messagesConfig, authorizationPanel, poller" interval="5" rendered="{!isSyncRunning}"  oncomplete="reAttachPicklists()" />
+
+	</apex:outputPanel>
+
+	</apex:form>
+
+	<apex:outputpanel >
+	    <apex:actionstatus id="status">
+			<apex:facet name="start">
+	        	<div class="waitingSearchDiv" id="el_loading" style="background-color: #fbfbfb; height: 100%;opacity:0.65;width:100%;">
+	            	<div class="waitingHolder" style="top: 74.2px; width: 91px;">
+	                    <img class="waitingImage" src="/img/loading.gif" title="Please Wait..." />
+	                    <span class="waitingDescription">{!$Label.LAB_Loading}</span>
+	                </div>
+	            </div>
+	        </apex:facet>
+	    </apex:actionstatus>
+	</apex:outputpanel>
+
+</apex:outputPanel> <!-- End of container for entire page. -->
+
+</apex:page>

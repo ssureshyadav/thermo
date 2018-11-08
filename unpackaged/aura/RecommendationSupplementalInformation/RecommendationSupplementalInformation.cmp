@@ -1,0 +1,129 @@
+<aura:component controller="LBI.LCRecommendationSuppInfoController"> <!-- implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName" access="global">-->
+	<aura:attribute access="global" name="recordId" type="String" />
+	<aura:attribute access="global" name="sObjectName" type="String" />
+	<aura:attribute access="global" name="supplementalInformationId" type="String" />
+
+	<aura:attribute access="public" name="suppInfo" type="Object" />
+	<aura:attribute access="public" name="pageInfo" type="Object" />
+
+	<aura:attribute access="public" name="searchTerm" type="String" />
+	<aura:attribute access="public" name="sortColumn" type="String" />
+	<aura:attribute access="public" name="isAscending" type="Boolean" />
+	<aura:attribute access="public" name="pageCounter" type="Integer" />
+	<aura:attribute access="public" name="namespacePrefix" type="String" default="" description="Namespace Prefix" />
+
+	<!--SK 1/9/17
+		Because I cannot refer to map like this: {!v.suppInfo.fieldColumnHeaderMap[columnHeaderKey]}
+		I will create a list in the controller with all the titles, pre-sorted
+	-->
+	<aura:attribute access="public" name="titles" type="Object[]" />
+	<aura:attribute access="public" name="sortedRecords" type="Object[]" />
+
+    <aura:handler name="click" event="LBI:SortableHeaderClick" action="{!c.sortTable}" includeFacets="true" />
+
+	<!-- this is the way to link to a resource, according sfdcfox here http://salesforce.stackexchange.com/questions/143630 -->
+	<!-- Needed for the icons/fonts -->
+	<!-- <ltng:require styles="{!'/resource/' + v.namespacePrefix + 'installAssets/styles/main.css'}"/> -->
+	<ltng:require styles="{!'/resource/' + v.namespacePrefix + 'lightningAssets/styles/icons.css'}"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+	<span class="tab-content" id="suppInfoContentDiv">
+		<lightning:layout verticalAlign="top" multipleRows="true" pullToBoundary="">
+
+			<div class="utility-bar">
+				<h3>{!v.suppInfo.tabName}</h3>
+				<div aura:id="searchPanel" class="search-table">
+                    <aura:if isTrue="{!v.pageInfo.records.length != 0 || v.searchTerm != ''}">
+                        <ui:inputText value="{!v.searchTerm}" aura:id="searchBox" placeholder="Enter Search Terms" keypress="{!c.handleChangeTerm}" updateOn="keypress" />
+                    </aura:if>
+
+					<aura:if isTrue="{!v.pageInfo.records.length != 0 || v.searchTerm != ''}">
+						<lightning:button variant="brand" label="Search" onclick="{! c.handleSearch }" aura:id="doSearch" />
+						<lightning:button variant="neutral" label="Clear" onclick="{! c.handleClearSearch }" aura:id="clearSearch" class="hideMe" />
+					</aura:if>
+				</div>
+
+			</div>
+			<div class="utility-export">
+				<aura:if isTrue="{!v.pageInfo.records.length != 0 &amp;&amp; v.pageInfo.totalRecordCount &lt; 10001}">
+					<lightning:button variant="neutral" label="Export to CSV" onclick="{! c.goToExportPage }" aura:id="export" class="export" />
+				</aura:if>
+				<aura:if isTrue="{!v.pageInfo.totalRecordCount &gt; 10000}">
+					<div id="exportCsvErrorPanel">
+						{!v.suppInfo.labels.tooMany}
+					</div>
+				</aura:if>
+			</div>
+
+			<lightning:layoutItem size="12" aura:id="theSuppInfoPanel" flexibility="no-grow" class="table-wrapper">
+				<aura:if isTrue="{!v.pageInfo.records.length != 0}">
+	                <table class="slds-table slds-table--bordered slds-table--cell-buffer slds-table--striped">
+                        <thead>
+                            <tr class="slds-text-title--caps">
+                            	<aura:iteration items="{!v.titles}" var="title">
+                                    <th scope="col">
+                                    	<LBI:SortableHeader apiName="{!title.apiName}"
+                                                            label="{!title.label}"
+                                                            isSortable="{!title.isSortable}"
+                                                            isSorted="{!v.sortColumn == title.apiName}"
+                                                            isAscending="{!v.isAscending}" />
+                                    </th>
+                            	</aura:iteration>
+
+                            </tr>
+                        </thead>
+                        <tbody>
+                        	<aura:iteration items="{!v.sortedRecords}" var="record">
+                                <tr>
+                                	<aura:iteration items="{!record.fields}" var="field">
+                                        <td data-title="{!field.fieldLabel}">
+                                            <div class="slds-truncate" title="{!field.value}">
+                                            <aura:if isTrue="{!field.relatedId != ''}">
+                                            	<a href="{!'/' + field.relatedId}"><LBI:DynamicDisplayField fieldValue="{!field.value}" fieldType="{!field.fieldType}" /></a>
+                                            	<aura:set attribute="else">
+                                            		<LBI:DynamicDisplayField fieldValue="{!field.value}" fieldType="{!field.fieldType}" />
+                                            	</aura:set>
+                                        	</aura:if>
+                                        	</div>
+                                        </td>
+                            		</aura:iteration>
+                                </tr>
+                            </aura:iteration>
+                        </tbody>
+                    </table>
+
+				</aura:if>
+
+                <aura:if isTrue="{!v.pageInfo.records.length == 0}">
+                    <div class="noRecordsPanel">
+                    	{!v.pageInfo.pageMessage}
+                    </div>
+                </aura:if>
+
+            </lightning:layoutItem>
+
+            <lightning:layoutItem size="12" aura:id="theSuppInfoPanel">
+	            <div id="pagination">
+	                <div class="pagination">
+	                    <p>
+	                        <aura:if isTrue="{!v.pageInfo.totalRecordCount &gt; 0}">
+	                            {!v.pageInfo.pageRecordDisplay}
+	                        </aura:if>
+	                    </p>
+	                    <ul>
+	                        <aura:if isTrue="{!v.pageInfo.hasNext || v.pageInfo.hasPrevious}">
+	                            <lightning:button variant="neutral" iconName="utility:jump_to_bottom" onclick="{! c.firstPage }" aura:id="firstButton" class="first" />
+	                            <lightning:button variant="neutral" label="Prev" onclick="{! c.previousPage }" aura:id="prevButton" />
+	                            <lightning:button variant="neutral" label="Next" onclick="{! c.nextPage }" aura:id="nextButton" />
+	                            <lightning:button variant="neutral" iconName="utility:jump_to_bottom" onclick="{! c.lastPage }" aura:id="lastButton" class="last" />
+	                        </aura:if>
+	                    </ul>
+	                </div>
+            	</div>
+            </lightning:layoutItem>
+		</lightning:layout>
+	</span>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

@@ -1,0 +1,4 @@
+<aura:event type="APPLICATION">
+    <aura:attribute name="containerGId" type="String" />
+    <aura:attribute name="Account" type="Account" />
+</aura:event>

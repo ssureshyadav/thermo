@@ -1,0 +1,190 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.SyncDashboardController"
+			action="{!onLoad}">
+
+<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}" />
+
+<apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+
+<script type="text/javascript">
+
+    var isAborting;
+
+    function setFocusOnLoad() {}
+
+    $(document).ready(function() {
+		isAborting = false;
+    });
+
+    function toggleDisplay(rowNumber, runId) {
+    	if (isAborting) { return false; }
+
+    	$('#details' + rowNumber).toggle();
+
+        $('#caret' + rowNumber).toggleClass('closed');
+        $('#caret' + rowNumber).toggleClass('open');
+
+        toggleRunJs(runId);
+    }
+
+    function closeModals() {
+    	$('#confirmAbort').modal('hide');
+    }
+
+    function abortJob() {
+    	isAborting = true;
+    	abortJobJs($('#runToAbortId').val());
+    }
+
+    function openAbort(abortRunId) {
+    	$('#runToAbortId').val(abortRunId);
+    }
+
+    function clearAbort() {
+    	isAborting = false;
+    }
+</script>
+<apex:form id="theForm" >
+
+<apex:actionFunction action="{!abortJob}" name="abortJobJs" reRender="theForm" oncomplete="clearAbort();">
+	<apex:param name="nickName" assignTo="{!selectedRunId}" value=""/>
+</apex:actionFunction>
+
+<apex:actionFunction action="{!toggleRun}" name="toggleRunJs" reRender="theTable">
+	<apex:param name="runTo" assignTo="{!runToToggle}" value=""/>
+</apex:actionFunction>
+
+<input type="hidden" id="runToAbortId" />
+
+<div id="lattice-admin">
+
+    <div class="container-fluid sync-dashboard">
+        <div class="row advanced-admin-title">
+            <div class="col-md-6">
+                <a class="back-to-advanced-admin" href="/apex/ConfigurationPage">{!$Label.AIS_BackToAdmin}</a>
+                <h1>{!$Label.SD_Title}</h1>
+            </div>
+            <div class="col-md-6">
+            	<apex:commandButton styleClass="btn btn-default pull-right" value="{!$Label.lbi__dsh_refreshnow}" action="{!refreshJobs}" reRender="theForm" />
+            	<apex:outputPanel styleClass="last-update pull-right" layout="inline">
+            		{!$Label.lbi__sd_refreshinterval}
+            	</apex:outputPanel>
+            </div>
+        </div>
+
+		<apex:pageMessages id="messages"/>
+
+		<apex:outputPanel id="theTable" layout="none">
+        <table class="table">
+        <thead>
+            <tr>
+                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchRun__c.fields.LBI__BatchSyncRunStart__c.label}" /></th>
+                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchRun__c.fields.LBI__Status__c.label}" /></th>
+                <th style="width:60px">&nbsp;</th>
+            </tr>
+            <tbody class="sortable">
+            	<apex:variable value="{!1}" var="rowNum"/>
+
+				<apex:repeat value="{!valuesToShow}" var="run">
+					<tr onclick="toggleDisplay('{!rowNum}', '{!run.rawObject.id}');" class="clickableRow">
+	                    <td><c:FormattedDateTime datetimeValue="{!run.rawObject.LBI__BatchSyncRunStart__c}" /></td>
+	                    <td>
+	                    	<apex:outputField value="{!run.rawObject.LBI__Status__c}" />
+	                    	<apex:outputPanel layout="none" rendered="{!run.rawObject.LBI__Status__c == 'In Progress'}">
+		                		<a data-toggle="modal" data-target="#confirmAbort" id="confirmButton" onclick="openAbort('{!run.rawObject.id}');">{!$Label.LAB_AbortJob}</a>
+		                	</apex:outputPanel>
+	                    </td>
+	                    <td>
+	                    	<span class="{!IF(run.isOpen,'open','closed')}" id="caret{!rowNum}">&nbsp;</span>
+							<input type="hidden" class="hidId" value="{!run.rawObject.Id}" />
+	                    </td>
+                	</tr>
+                	<tr style="{!IF(run.isOpen,'','display:none')}" id="details{!rowNum}">
+                		<td class="nested-sync-table" colspan="3">
+	                		<h4><apex:outputText value="{!$Label.lbi__sd_stepdetails}" /></h4>
+	                		<table class="table table-striped">
+        					<thead>
+        						<tr>
+					                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchStep__c.fields.LBI__StepName__c.label}" /></th>
+					                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchStep__c.fields.LBI__Status__c.label}" /></th>
+					                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchStep__c.fields.LBI__TotalExpectedRecords__c.label}" /></th>
+					                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchStep__c.fields.LBI__TotalCountSuccess__c.label}" /></th>
+					                <th><apex:outputText value="{!$ObjectType.LBI__LatticeSyncBatchStep__c.fields.LBI__TotalCountError__c.label}" /></th>
+					            </tr>
+        					</thead>
+        					<tbody>
+	                		<apex:repeat value="{!run.rawObject.LatticeSyncBatchSteps__r}" var="step">
+	                			<tr>
+	                				<td><apex:outputText value="{!step.LBI__StepName__c}" /></td>
+	                				<td><apex:outputText value="{!step.LBI__Status__c}" /></td>
+	                				<td><apex:outputText value="{!step.LBI__TotalExpectedRecords__c}" /></td>
+	                				<td><apex:outputText value="{!step.LBI__TotalCountSuccess__c}" /></td>
+	                				<td>
+	                					<apex:outputText value="{!step.LBI__TotalCountError__c}" />&nbsp;
+	                					<apex:commandLink action="{!viewErrors}" value="{!$Label.lbi__lab_viewerrors}" rendered="{!step.LBI__TotalCountError__c > 0}">
+	                						<apex:param value="{!step.id}" name="stepid" assignTo="{!selectedStepId}" />
+	                					</apex:commandLink>
+	                				</td>
+	                			</tr>
+	                			<apex:outputPanel layout="inline" rendered="{!step.LBI__Status__c == 'Failed'}">
+		                			<tr>
+		                				<td colspan="5">
+		                					<b>
+		                						<apex:outputText value="{!$Label.lbi__lab_errormessage}:  " />
+		                					</b>
+		                					<!-- TAL:  Changed escape to true here to satisfy Checkmarx, looks like the string doesn't contain HTML so we should be fine escaping it -->
+		                					<apex:outputText value="{!step.LBI__FailureReason__c}" escape="true" />
+		                				</td>
+		                			</tr>
+		                		</apex:outputPanel>
+	                		</apex:repeat>
+	                		</tbody>
+	                		</table>
+
+                		</td>
+                	</tr>
+                	<apex:variable var="rowNum" value="{!rowNum + 1}"/>
+				</apex:repeat>
+
+            </tbody>
+        </thead>
+	    </table>
+
+		<apex:actionPoller action="{!refreshJobs}" reRender="theForm" interval="15" />
+
+		</apex:outputPanel>
+
+		<!-- Confirm Changes -->
+		<div id="confirmAbort" class="modal fade" role="dialog">
+		    <div class="modal-dialog">
+
+		        <!-- Modal content-->
+		        <div class="modal-content">
+		            <div class="modal-header">
+		                <button type="button" class="close" data-dismiss="modal">&times;</button>
+		                <h3 class="modal-title">{!$Label.LAB_AbortJob}</h3>
+		            </div>
+		            <div class="modal-body">
+		                <p>{!$Label.SD_AbortJobConfirm}</p>
+		            </div>
+		            <div class="modal-footer">
+		                <button type="button" class="btn btn-primary" onclick="closeModals();">{!$Label.LAB_Cancel}</button>
+		                <button type="button" class="btn btn-default" onclick="abortJob();">{!$Label.LAB_AbortJob}</button>
+		            </div>
+		        </div>
+
+
+		    </div>
+		</div>
+		<!-- End Confirm Changes -->
+    </div>
+
+
+</div>
+
+
+</apex:form>
+
+
+</apex:page>

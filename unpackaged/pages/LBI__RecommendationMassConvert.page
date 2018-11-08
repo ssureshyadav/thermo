@@ -1,0 +1,128 @@
+<apex:page sidebar="{!showSidebar}"
+           standardController="LBI__Recommendation__c"
+           extensions="LBI.RecommendationMassActionController"
+           action="{!selectRecommendationsForConvert}"
+           recordSetVar="Recommendations"
+           tabStyle="LBI__Recommendation__c">
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+
+<script type="text/javascript">
+    var previousOnload = window.onload;
+
+    //Do it this way to avoid the overkill of adding jQuery to this page just for this
+    window.onload = function() {
+        if (previousOnload) {
+            previousOnload();
+        }
+
+        enableDisableSaveButton(false);
+    };
+
+    function enableDisableSaveButton(value) {
+        var theButton = document.getElementById('confirmButton');
+
+        if (value) {
+            theButton.style.display = 'none';
+        } else {
+            theButton.style.display = '';
+        }
+        //theButton.disabled = value;
+    }
+</script>
+
+
+<apex:sectionHeader title="{!$Label.lbi__rep_recommendation}" subtitle="{!$Label.lbi__mass_convert}"/>
+
+<apex:form id="theForm" >
+
+    <apex:actionFunction action="{!massConvertOpportunity}" name="convert" />
+
+ 	<apex:outputPanel layout="none" rendered="{!NOT(foundMultipleAccountforMassConvert)}">
+       <apex:pageBlock title="{!$Label.lbi__rep_convert_opportunity}" rendered="{!selectedDisqualifyRecommendations.size != 0}">
+       <apex:pageMessage summary="{!$Label.lbi__mass_convert_confirm}" severity="warning" strength="3"/>
+            <apex:pageBlockTable value="{!selectedDisqualifyRecommendations}" var="rec">
+                <apex:column value="{!rec.LBI__DisplayName__c}"/>
+                <apex:column value="{!rec.LBI__Play__c}"/>
+                <apex:column value="{!rec.LBI__Account__c}"/>
+                <apex:column value="{!rec.LBI__Rank__c}"/>
+                <apex:column value="{!rec.LBI__OwnerName__c}"/>
+                <apex:column value="{!rec.LBI__Status__c}"/>
+            </apex:pageBlockTable>
+        </apex:pageBlock>
+
+    <section class="content-main" id="bootstrap-lattice">
+
+    	<div class="row wrapper">
+	        <div class="col-md-12">
+	          <h2>{!$Label.lbi__mass_convert_confirm}</h2>
+	        </div>
+
+	        <div class="col-md-12">
+	          <apex:pagemessages ></apex:pagemessages>
+	        </div>
+
+	      	<apex:outputPanel id="recommendationEdit" layout="block"  styleClass="lattice-details" rendered="{!selectedDisqualifyRecommendations.size!=0}">
+
+
+	            <div class="col-md-12">
+	              <apex:repeat value="{!oppFields}" var="oppFieldName" >
+
+	                <div class="col-md-6">
+	                  <div class="form-group">
+	                    <apex:outputLabel value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" />
+	                    <apex:inputField styleClass="form-control" value="{!newOpp[oppFieldName]}" />
+	                  </div>
+	                </div>
+
+	              </apex:repeat>
+	            </div>
+
+	            <div class="col-md-12 center-block">
+                    <apex:commandButton styleclass="popup-modal-dismiss btn btn-default"  action="{!back}" value="{!$Label.lbi__lab_cancel}"  immediate="true"/>
+
+                    <input type="button" class="btn btn-danger" id="confirmButton" value="{!$Label.MASS_Confirm_Btn}" onclick="enableDisableSaveButton(true);convert()" />
+	            </div>
+	      	</apex:outputPanel>
+      	  <apex:outputPanel id="recommendationBlank" layout="block"  styleClass="lattice-details" rendered="{!selectedDisqualifyRecommendations.size==0}">
+
+          <div class="col-md-12 center-block">
+            <apex:commandButton styleclass="popup-modal-dismiss btn btn-default"  action="{!back}" value="{!$Label.lbi__lab_cancel}"  immediate="true"/>
+          </div>
+
+          </apex:outputPanel>
+		</div>
+
+    </section>
+
+         <apex:pageBlock title="{!$Label.lbi__rep_ignored_recommendations}" rendered="{!lstnotQualifiedRecommendationsfordisqualify.size!=0}">
+         <apex:pageMessage summary="{!$Label.lbi__error_mass_convert} ({!lstnotQualifiedRecommendationsfordisqualify.size})" severity="warning" strength="3"/>
+            <apex:pageBlockTable value="{!lstnotQualifiedRecommendationsfordisqualify}" var="rec">
+                <apex:column value="{!rec.rec.LBI__DisplayName__c}"/>
+                <apex:column value="{!rec.rec.LBI__Play__c}"/>
+                <apex:column value="{!rec.rec.LBI__Account__c}"/>
+                <apex:column value="{!rec.rec.LBI__Rank__c}"/>
+                <apex:column value="{!rec.rec.LBI__OwnerName__c}"/>
+                <apex:column value="{!rec.rec.LBI__Status__c}"/>
+                <apex:column >
+                <apex:facet name="header">{!$Label.lbi__rep_reason}</apex:facet>
+                            {!rec.Reason}
+               </apex:column>
+            </apex:pageBlockTable>
+        </apex:pageBlock>
+        <apex:actionFunction action="{!checkDisplayDisqualifyReason}" name="checkDisplayDisqualifyReason" reRender="recommendationEdit" />
+        </apex:outputPanel>
+
+        <apex:outputPanel rendered="{!foundMultipleAccountforMassConvert}">
+           <apex:pageMessage summary="{!$Label.lbi__mass_invalid_selection_error}" severity="error" strength="3"/>
+           <br/>
+            <section class="content-main" id="bootstrap-lattice">
+              <div class="row wrapper">
+                 <div class="col-md-6 center-block">
+                 <apex:commandButton styleclass="popup-modal-dismiss btn btn-default"  action="{!back}" value="{!$Label.lbi__lab_cancel}"  immediate="true"/>
+                 </div>
+             </div>
+           </section>
+        </apex:outputPanel>
+
+    </apex:form>
+</apex:page>

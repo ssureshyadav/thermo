@@ -1,0 +1,59 @@
+<aura:component controller="LBI.LCInputMultiSelectController" access="global">
+    <aura:attribute name="sObjectAPIName" type="String" required="true" description="The API name of the SObject that contains the lookup." />
+    <aura:attribute name="fieldAPIName" type="String" required="true" description="The API name of the field that contains the lookup." />
+    <aura:attribute name="label" type="String" description="The label to show on the lookup, eg: Parent Account" />
+    <aura:attribute name="value" type="String" description="The default value (As an ID) to show on the lookup, eg: 001xxxx" />
+
+    <aura:attribute name="options" type="String[]" description="Options To Display on the List" />
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <!-- Events -->
+    <aura:registerEvent name="inputChanged" type="LBI:InputValueChanged"/>
+
+	<div class="slds-picklist--draggable slds-grid">
+		<div class="slds-form-element">
+		    <span class="slds-form-element__label" aria-label="select-1">{!v.label} - Available</span>
+		    <div class="slds-picklist slds-picklist--multi" role="application">
+				<ul class="slds-picklist__options slds-picklist__options--multi shown" role="listbox" aria-multiselectable="true">
+					<aura:iteration items="{!v.options}" var="opt">
+						<span>
+							<aura:if isTrue="{!! opt.isSelected}">
+								<li class="slds-picklist__item" aria-selected="{!opt.isClicked}" role="option"
+									id="{!'lab' + opt.label}" onclick="{!c.handleClickItem}" ondblclick="{!c.handleDoubleClickItem}"><!--  draggable="true"  -->
+
+						          	<span class="slds-truncate">
+						            	<span>{!opt.label}</span>
+						          	</span>
+						        </li>
+							</aura:if>
+						</span>
+					</aura:iteration>
+			    </ul>
+			</div>
+		</div>
+		<div class="slds-grid slds-grid--vertical">
+        	<lightning:buttonIcon variant="container" iconName="utility:left" size="small" alternativeText="left" onclick="{!c.handleRemove}"/>
+            <lightning:buttonIcon variant="container" iconName="utility:right" size="small" alternativeText="left" onclick="{!c.handleAdd}"/>
+		</div>
+		<div class="slds-form-element">
+			<span class="slds-form-element__label" aria-label="select-2">{!v.label} - Selected</span>
+		    <div class="slds-picklist slds-picklist--multi" role="application">
+		      	<ul class="slds-picklist__options slds-picklist__options--multi shown" role="listbox" aria-multiselectable="true">
+					<aura:iteration items="{!v.options}" var="opt">
+						<span>
+							<aura:if isTrue="{! opt.isSelected}">
+								<li class="slds-picklist__item" aria-selected="{!opt.isClicked}" role="option"
+									id="{!'lab' + opt.label}" onclick="{!c.handleClickItem}" ondblclick="{!c.handleDoubleClickItem}"><!--  draggable="true"  -->
+						          	<span class="slds-truncate">
+						            	<span>{!opt.label}</span>
+						          	</span>
+						        </li>
+							</aura:if>
+						</span>
+					</aura:iteration>
+		      	</ul>
+		    </div>
+		</div>
+	</div>
+</aura:component>

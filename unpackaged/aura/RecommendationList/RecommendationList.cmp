@@ -1,0 +1,24 @@
+<aura:component controller="LBI.LCRecommendationsListController" implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName" access="global">
+	<aura:attribute access="global" name="recordId" type="String" />
+	<aura:attribute access="global" name="sObjectName" type="String" />
+
+    <aura:attribute access="public" name="tabs" type="Object[]"/>
+    <aura:attribute access="public" name="showRevenue" type="Boolean" default="false" />
+    <aura:attribute access="public" name="showScore" type="Boolean" default="false" />
+
+    <!-- <aura:handler name="init" value="{!this}" action="{!c.init}"/> -->
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <LBI:RecommendationService aura:id="recService" />
+
+    <div class="slds-p-around--small">
+        <LBI:RecommendationTabs parentRecordId="{!v.recordId}"
+                                objectContainer="{!v.sObjectName}"
+                                isDetail="false"
+                                showScore="{!v.showScore}"
+                                showRevenue="{!v.showRevenue}" />
+
+    </div>
+
+</aura:component>

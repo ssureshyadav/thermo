@@ -1,0 +1,341 @@
+<apex:page title="Attach Files " controller="DragDropAttach.AttachFiles" tabStyle="Account" >
+    <script type="text/javascript">
+        var __sfdcSessionId = '{!GETSESSIONID()}';
+    </script>
+    <script src="/soap/ajax/33.0/connection.js" type="text/javascript"></script>
+    <apex:pagemessages id="pageMessages"></apex:pagemessages>
+    <apex:includeScript value="{!URLFOR($Resource.DragDropAttach__JqueryNew, 'js/jquery.js')}"/> 
+    <apex:includeScript value="{!URLFOR($Resource.DragDropAttach__JqueryNew, 'js/jquery-ui.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.DragDropAttach__JqueryNew, 'js/jquery.easy-confirm-dialog.js')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.DragDropAttach__JqueryNew, 'css/FileUploadCSS.css')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.DragDropAttach__JqueryNew, 'css/ui-lightness/jquery-ui-1.8.18.custom.css')}"/>
+    
+    <script type="text/javascript">
+       
+        var j$ = jQuery.noConflict();
+        var count =0;
+        var files;
+        var currentFile;
+        var $upload;
+        var uploadCounter = 0;
+        var progressCounter = 0;
+        var VIEW_URL = '/servlet/servlet.FileDownload?file=';
+        var cancelPerformed = false;
+        j$(window).load(function(){    
+            j$('#browseArea').click(function(){
+                j$('#file-input').trigger('click');
+            });
+            j$("#drop_zone").bind('dragover',function() {  
+                j$('#drop_zone').css('border','2px dashed #3385E2').css('color','#3385E2'); }).bind('dragleave', function() { j$('#drop_zone').css('border','2px dashed #ccc').css('color','#ccc'); 
+            });  
+        });
+        //Executes when start Upload button is selected
+        function prepareFileUploads(evt){
+            //Initialize variables 
+            files = null;
+            currentFile = null;
+            count=0;
+            uploadCounter = 0;
+            progressCounter = 0;
+            evt.preventDefault();
+            //Get the file(s) from the input field
+            files = evt.dataTransfer.files; // FileList object.
+            j$('#drop_zone').css('border','2px dashed #ccc').css('color','#ccc');
+            uploadFiles();
+       }
+       function uploadFiles() {
+            j$('.uploadBox').show();
+            //Only proceed if there are files selected
+            if(files.length == 0){
+                alert('Please select a file!');
+                return; //end function
+            }
+    
+            //Build out the upload divs for each file selected
+            var uploadMarkup = '';
+            for(i = 0; i < files.length; i++){
+                //Determine file display size
+                if(files[i].size < 1000000){
+                    var displaySize = Math.floor(files[i].size/1000) + 'K';
+                }else{
+                    var displaySize  = Math.round((files[i].size / 1000000)*10)/10 + 'MB';
+                }
+                
+               
+                //For each file being uploaded create a div to represent that file, includes file size, status bar, etc. data-Status tracks status of upload
+                uploadMarkup += '<div class="upload" data-status="pending" data-index="'+i+'">'; //index used to correspond these upload boxes to records in the files array
+                uploadMarkup += '<span style="width:550px;display:inline-block;">';
+                uploadMarkup += '<img class="statusbar img'+i+'" style="height: 16px;width: 16px;margin-right: 6px;" src="{!URLFOR($Resource.DragDropAttach__jquery, 'uploading.gif')}" />';   
+                uploadMarkup += '<span class="fileName"><span class="name name'+i+'">'+ files[i].name + '</span> ('+ displaySize+ ')</span>';
+                uploadMarkup += '<span class="percentComplete percentComplete'+i+'">Pending</span></span>';
+                uploadMarkup += '</span>';
+                uploadMarkup += '<div class="clear"/>';
+                uploadMarkup += '</div>';
+                
+    
+                
+            }
+            //Empty earlier contents
+            j$('.uploadBox').html('');
+            //Add markup to the upload box
+            j$('.uploadBox').append(uploadMarkup);
+            j$('.uploadBox').dialog({
+                autoOpen: false,
+                draggable: false,
+                modal: true,
+                resizable: false,
+                width: 590,
+                height: 300,
+                buttons:{"Cancel Remaining Uploads": function(){},"Done":function(){j$(this).dialog("close" );uploadComplete();}},
+                open: function(event, ui) { jQuery('.ui-dialog-titlebar-close').hide(); }
+            });
+    
+            j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[1]).hide();
+            j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0]).easyconfirm();
+            j$('.uploadBox').dialog('open');
+            j$(".ui-dialog-title").html('Attach files to "{!JSENCODE(recordname)}"');
+    
+            //Once elements have been added to the page representing the uploads, start the actual upload process
+            
+            checkForUploads();
+        }
+        function callUploadFile()
+        {
+            //Initialize variables 
+            files = null;
+            currentFile = null;
+            count=0;
+            uploadCounter = 0;
+            progressCounter = 0;
+            var input = document.getElementById("file-input");
+            files = input.files; // File array.
+            uploadFiles();
+        }
+        function processCurrentFile(){
+           
+            var reader = new FileReader();
+
+            // Keep a reference to the File in the FileReader so it can be accessed in callbacks
+            reader.file = currentFile;
+
+            reader.onload = function(e)
+            {
+                if(e.target.readyState == FileReader.DONE){ //Make sure read was successful, DONE == 2
+                    var att = new sforce.SObject("Attachment");
+                    att.Name = this.file.name;
+                    att.ContentType = this.file.type;
+                    att.ParentId = "{!JSENCODE($CurrentPage.parameters.recordid)}";
+                    console.log('********** '+'{!JSENCODE($CurrentPage.parameters.recordid)}');
+                    j$('.percentComplete'+count).html('<font style="color:#00DA40;">Uploading...</font>');
+                    var binary = "";
+                    var bytes = new Uint8Array(e.target.result);
+                    var length = bytes.byteLength;
+    
+                    for (var i = 0; i < length; i++)
+                    {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+    
+                    att.Body = (new sforce.Base64Binary(binary)).toString();
+                    $upload.attr('data-status','complete');
+                    if(files != null){
+                        sforce.connection.create([att],
+                        {
+                            onSuccess : function(result, source)
+                            {
+                                if (result[0].getBoolean("success"))
+                                {
+                                     j$('.name'+progressCounter).html('<a href="' + VIEW_URL + result[0].id + '" target="_blank">'+ currentFile.name +'</a>');
+                                     
+                                     j$('.img'+progressCounter).hide();
+                                     
+                                     j$('.percentComplete'+progressCounter).html('<font style="color:#008040;">Done</font>');
+                                     
+                                     //call method which will upload next file if its available
+                                     if(cancelPerformed){
+                                        j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[1]).removeAttr('disabled');    
+                                     }
+                                     console.log("new attachment created with id " + result[0]);
+                                }
+                                else
+                                {
+                                     j$('.img'+progressCounter).hide();
+                                     j$('.percentComplete'+progressCounter).html('<font style="color:#008040;">Error</font>');
+                                     console.log("failed to create attachment " + result[0]);
+                                }
+                                if(files != null && progressCounter<files.length)
+                                    callUpload();
+                            },
+                            onFailure : function(error, source)
+                            {
+                                console.log("an error has occurred " + error);
+                            }
+                        });
+                    }
+                }
+                else{
+                    //If script is here something broke on the JavasSript remoting call
+                    //Add classes to reflect error  
+                    $upload.attr('data-status','complete');
+                    
+                    if (e.message=='String length exceeds maximum: 6000000'){
+                        $upload.find('.percentComplete'+count).html('<font style="color:#FF0000;">Error : File is too large</font>');
+                    }
+                    
+                    else if (e.message.match("STORAGE_LIMIT_EXCEEDED")){
+                        $upload.find('.percentComplete'+count).html('<font style="color:#FF0000;">Error : STORAGE_LIMIT_EXCEEDED</font>');
+                    }
+                    
+                    else {
+                        $upload.find('.percentComplete'+count).html('<font style="color:#FF0000;">Error : '+e.message+'</font>');
+                    }
+                }
+            };
+            reader.readAsArrayBuffer(currentFile);
+            
+        }
+        function checkForUploads(){
+            //Get div of the first matching upload element that is 'pending', if none, all uploads are complete
+            $upload = j$(".upload:first[data-status='pending']");
+            if(uploadCounter<files.length){
+                currentFile = files[uploadCounter];
+                if(uploadCounter==(files.length-1)){
+                    j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0]).attr('disabled','disabled');   
+                }
+                if(currentFile.size <= 25000000){
+                    //Start processing the byteChunkArray for the current file, parameter is '' because this is the first chunk being uploaded and there is no attachment Id
+                    processCurrentFile();
+    
+                }
+                else {
+                    console.log(uploadCounter);
+                    $upload.find('.img'+uploadCounter).hide();
+                    $upload.attr('data-status','complete');
+                    $upload.find('.percentComplete'+uploadCounter).html('<font style="color:#FF0000;">Error : File is too large</font>');
+                    callUpload();
+                }
+            }
+            else{
+                console.log("All Files has been uploaded Successfully");
+                 performUploadCompleteActions();
+            }
+        }
+        function callUpload(){
+             //update the count variable 
+            count++;
+            progressCounter++;
+            uploadCounter++;
+            if(files != null)
+                checkForUploads();  
+        }
+        function performUploadCompleteActions(){
+            j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0]).hide();
+            j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[1]).show();
+            uploadComplete();
+        }
+        function performUploadCancelActions(){
+            files = null;
+            j$(".upload[data-status='pending']").find('.percentComplete').html('<font style="color:#C00000;;">Canceled</font>');
+            j$(".upload[data-status='pending']").find('.statusbar').hide();
+            j$(".upload[data-status='pending']").attr('data-status','complete');
+            
+            j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0]).hide();
+            j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[1]).show();
+            var countElements = j$(".percentComplete:contains('Uploading...')").length;
+            if(countElements == 1){
+                j$(j$('.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[1]).attr('disabled','disabled');  
+                cancelPerformed = true; 
+            }
+            uploadComplete();
+        }
+    </script>
+    <script type="text/javascript">
+        function dragenter(e) {
+            count =0;
+            e.stopPropagation();
+            e.preventDefault();
+        }
+        function handleDragOver(evt){
+            //alert(evt);
+            evt.stopPropagation();
+            evt.preventDefault();
+            evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+        }
+        if(!window.FileReader) {
+            alert("This browser doesn't support Drag & Drop of Files. Please try using Google Chrome or Mozilla Firefox to use this application. Redirecting you back to standard way of uploading attachments.");
+            window.location.href = '/p/attach/NoteAttach?pid='+recordid+'&parentname='+recordname+'&retURL=%2F'+recordid;
+        }
+        else { 
+            j$(document).ready(function(){
+                try{ 
+                    var dropZone = document.getElementById('drop_zone');
+                    dropZone.addEventListener('dragenter', dragenter, false);
+                    dropZone.addEventListener("dragover", handleDragOver, false);
+                    dropZone.addEventListener('drop', prepareFileUploads, false);
+                    }
+                     catch(err) {
+                        alert("This browser doesn't support Drag & Drop of Files. Please try using Google Chrome or Mozilla Firefox to use this application. Redirecting you back to standard way of uploading attachments. (Technical Details : "+err+")");
+                        window.location.href = '/p/attach/NoteAttach?pid='+recordNewid+'&parentname='+recordname+'&retURL=%2F'+recordNewid;
+                    }    
+            });
+        }
+            
+    
+    </script>
+    
+    <style>
+        .bPageBlock .pbTitle {
+            width:100%;
+        }
+        .ui-widget {
+            z-index : 9999;
+        }
+        #drop_zone {
+             border : 2px dashed #ccc;
+             color : #ccc;
+        }
+        .button {
+            height: 25px;
+            background: #3385E2;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            color: white !important;
+            font-weight: bold;
+            text-decoration: none !important;
+        }
+    </style>
+    <apex:form >
+        <apex:actionFunction name="uploadComplete" action="{!uploadComplete}" rerender="relatedListOP"/>
+    </apex:form>
+    <apex:pageBlock title="Attach Files to {!recordtype} - {!recordname}">
+        <!-- <a style="display: block;" href="#" id="drop_zone">Drag and Drop files into this outlined area to attach</a> -->
+        <div class="dropbox">
+            <div id="drop_zone">Drag and Drop files into this outlined area or click to <span id="browseArea" style="color:#3385E2;cursor:pointer;"> browse file </span> </div>
+            <input multiple="true" onchange="callUploadFile();" id="file-input" type="file" style="display:none;"/>
+            <div class="uploadBox"></div><br/>    
+        </div>       
+    </apex:pageBlock>    
+    <apex:outputPanel id="relatedListOP">
+        <apex:pageBlock title="Existing Attachments">
+            <center>
+                 <div style="display:block;margin-top: 15px; margin-bottom: 5px;"> <a class="button" href="/{!recordid}" style="font-weight-bold;" id="theBackButton"> Back to {!recordtype} - {!recordname} </a> </div>
+            </center>
+            <br/>
+            <apex:pageBlockTable value="{!attachments}" var="attch" rendered="{!NOT(ISNULL(attachments))}">
+                <apex:column headerValue="Attachments Name">
+                    <a href="/{!attch.Id}" target="_blank">{!attch.Name}</a> 
+                </apex:column>
+               
+                <apex:column value="{!attch.BodyLength}" headerValue="Size (in Bytes)"/>
+                <apex:column value="{!attch.CreatedDate}"/>
+                <apex:column value="{!attch.LastModifiedDate}"/>
+                <apex:column value="{!attch.CreatedById}"/>
+                <apex:column value="{!attch.IsPrivate}"/>
+                <apex:column headerValue="View File">
+                    <a href="/servlet/servlet.FileDownload?file={!attch.Id}" target="_blank">View File</a>
+                </apex:column>                    
+            </apex:pageBlockTable>
+        </apex:pageBlock>
+    </apex:outputPanel>       
+</apex:page>

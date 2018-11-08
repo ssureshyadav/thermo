@@ -1,0 +1,8 @@
+<aura:component controller="RSDNA_AddUpdateVendor" implements="force:lightningQuickAction,flexipage:availableForRecordHome,force:hasRecordId" access="global">
+	<aura:attribute name="recordId" type="Id" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="accounts" type="Accounts[]"/>
+    <aura:iteration items="{!v.accounts}" var="acc">
+        {!acc.Name}
+    </aura:iteration>
+</aura:component>

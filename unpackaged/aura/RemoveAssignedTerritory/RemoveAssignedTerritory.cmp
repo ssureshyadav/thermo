@@ -1,0 +1,22 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : 
+    Company     : NTTDATA
+    Date        : 12 June,2017
+    Requirement : W-000180:
+                    T-00353: Dev - Display 'Assigned Territories' list
+    Test Class  : RSDNA_AddUpdateVendorTest
+    Last Updated By : 
+    
+-->
+<aura:component controller="RSDNA_LtngAssignedTerritories" implements="force:hasRecordId">
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="containerGId" type="String" />
+    <aura:registerEvent name="RemoveAssignedTerritoryEvent" type="c:RemoveAssignedTerritoryEvent" />
+    <aura:handler event="c:RemoveAssignedTerritoryEvent" action="{!c.deleteAssignedTerritory}" />
+    <table>
+		<tr onclick="{!c.deleteAssignedTerritory}">
+            Remove
+		</tr>
+    </table>
+</aura:component>

@@ -1,0 +1,59 @@
+<apex:page standardcontroller="Account" sidebar="true" showHeader="true" tabStyle="Account" cache="false" extensions="RSDNA_NewAccountType" docType="html-5.0"> 
+<apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.min.css')}" />
+        <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />  
+    <apex:outputPanel rendered="{!$User.UIThemeDisplayed == 'Theme3'}">
+<p style="color:white;font-size:6px;">
+<apex:form > 
+<apex:pageBlock > 
+<apex:pageMessage summary="Please create new accounts via the lead conversion process." severity="info" strength="3" /> 
+<apex:pageMessages /> 
+
+</apex:pageBlock> 
+</apex:form> 
+<apex:sectionheader title="Accounts" subtitle="Home" rendered="{!IF($Profile.Name =='System Administrator', true, false)}"></apex:sectionHeader> 
+</p> 
+
+<!-- <apex:ListViews type="Account" /> --> 
+<apex:enhancedList type="Account" height="730" rowsPerPage="25"/> 
+
+
+
+<!-- The action {redirPage} (line 1) is a method from OwnerOverrideController class. This method will be called before the page
+is rendered and allows to optionally redirect the user to another page -->
+
+</apex:outputPanel>
+
+<apex:outputPanel rendered="{!$User.UIThemeDisplayed == 'Theme4d'}">
+<div class="BBLDS">
+    <style>
+    
+    </style>
+    <apex:form >
+ <div role="dialog" class="slds-modal slds-fade-in-open slds-modal--small">
+  <div class="slds-modal__container">
+    <div class="slds-modal__header">
+      
+      <h2 id="header43" class="slds-text-heading--medium">Create Account</h2>
+    </div>
+    <div class="slds-modal__content slds-scrollable slds-p-top--small" >
+         <div class="slds-p-left--small">
+         <!--<apex:pageMessage summary="Please create new accounts via the lead conversion process." severity="info" strength="3" /> 
+         <apex:pageMessages /> -->
+        
+             <div class="slds-notify slds-notify--toast slds-theme--warning customMessage" style="color:#fff;">
+                 Warning: <br/>
+                 Please create new accounts via the lead conversion process.
+             </div>
+        </div>
+    </div>
+     <div class="slds-modal__footer">
+        <apex:commandButton value="Cancel" action="{!cancel}" styleClass="slds-button slds-button--neutral"/>
+    </div>
+  
+ </div>
+</div>
+<div class="slds-backdrop slds-backdrop--open"></div>
+</apex:form>
+</div> 
+</apex:outputPanel>
+</apex:page>

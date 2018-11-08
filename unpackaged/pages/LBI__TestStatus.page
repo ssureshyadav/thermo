@@ -1,0 +1,5 @@
+<apex:page sidebar="false" controller="LBI.TestStatusController">
+
+Batch Status: <span id="batchStatus">{!batchStatus}</span>
+
+</apex:page>

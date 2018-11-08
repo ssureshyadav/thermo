@@ -1,0 +1,87 @@
+<aura:component controller="LBI.LCActionButtonsController" >
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="workflowType" type="String" />
+	<aura:attribute access="public" name="recommendations" type="String[]" />
+
+	<aura:attribute access="public" name="labels" type="Object" />
+	<aura:attribute access="public" name="showConvert" type="Boolean" default="false" />
+    <aura:attribute access="public" name="showConvertLead" type="Boolean" default="false" />
+    <aura:attribute access="public" name="showLink" type="Boolean" default="false" />
+    <aura:attribute access="public" name="showDisqualify" type="Boolean" default="false" />
+
+    <aura:attribute access="public" name="leadButtons" type="Object" />
+    <aura:attribute access="public" name="recButtons" type="Object" />
+
+	<aura:attribute access="private" name="modalTitle" type="String" />
+	<aura:attribute access="private" name="modalBody" type="Object" />
+
+    <aura:handler name="cancel" event="LBI:ModalCancel" action="{!c.handleCancelEvent}" includeFacets="true" />
+   	<aura:handler name="save" event="LBI:ModalSave" action="{!c.handleSaveEvent}" includeFacets="true" />
+
+    <aura:registerEvent name="refresh" type="LBI:RefreshPage"/>
+
+    <aura:dependency resource="markup://LBI:ActionConvert" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionLeadConvert" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionLink" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionDisqualify" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionEmail" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionLogCall" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionTask" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:ActionMeeting" type="COMPONENT"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <lightning:buttonGroup class="buttonList">
+		<aura:if isTrue="{!v.workflowType == 'Recommendation'}">
+			<aura:if isTrue="{!v.showConvert}">
+				<lightning:button aura:id="convert" variant="brand" label="Convert To Opp" iconName="utility:moneybag" iconPosition="left" onclick="{!c.handleConvert}" />
+			</aura:if>
+			<aura:if isTrue="{!v.showLink}">
+				<lightning:button aura:id="link" variant="brand" label="Link To Opp" iconName="utility:contract_alt" iconPosition="left" onclick="{!c.handleLink}" />
+			</aura:if>
+			<aura:if isTrue="{!v.showDisqualify}">
+					<lightning:button aura:id="disqualify" variant="brand" label="Disqualify" iconName="utility:delete" iconPosition="left" onclick="{!c.handleDisqualify}" />
+			</aura:if>
+		</aura:if>
+		<aura:if isTrue="{!v.workflowType == 'Lead'}">
+			<aura:if isTrue="{!v.showConvertLead}">
+					<lightning:button aura:id="convertLead" variant="brand" label="Convert Lead" iconName="utility:moneybag" iconPosition="left" onclick="{!c.handleLeadConvert}" />
+			</aura:if>
+		</aura:if>
+
+		<aura:if isTrue="{!(v.workflowType == 'Recommendation' &amp;&amp; v.recButtons.showEmail) || (v.workflowType == 'Lead' &amp;&amp; v.leadButtons.showEmail)}">
+			<lightning:button aura:id="email" variant="brand" label="Email" iconName="utility:email" iconPosition="left" onclick="{!c.handleEmail}" />
+		</aura:if>
+		<aura:if isTrue="{!(v.workflowType == 'Recommendation' &amp;&amp; v.recButtons.showLogCall) || (v.workflowType == 'Lead' &amp;&amp; v.leadButtons.showLogCall)}">
+			<lightning:button aura:id="logCall" variant="brand" label="Call" iconName="utility:log_a_call" iconPosition="left" onclick="{!c.handleLogCall}" />
+		</aura:if>
+		<aura:if isTrue="{!(v.workflowType == 'Recommendation' &amp;&amp; v.recButtons.showTask) || (v.workflowType == 'Lead' &amp;&amp; v.leadButtons.showTask)}">
+			<lightning:button aura:id="task" variant="brand" label="Task" iconName="utility:task" iconPosition="left" onclick="{!c.handleTask}" />
+		</aura:if>
+		<aura:if isTrue="{!(v.workflowType == 'Recommendation' &amp;&amp; v.recButtons.showEvent) || (v.workflowType == 'Lead' &amp;&amp; v.leadButtons.showEvent)}">
+			<lightning:button aura:id="meeting" variant="brand" label="Meeting" iconName="utility:event" iconPosition="left" onclick="{!c.handleMeeting}" />
+		</aura:if>
+	</lightning:buttonGroup>
+
+	<div aura:id="modal" class="hideMe">
+		<div role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal--large slds-align--absolute-center" aria-labelledby="mainHeader">
+			<div class="slds-modal__container">
+				<div class="slds-modal__header">
+
+					<lightning:buttonIcon variant="bare-inverse" iconName="utility:close" size="large" class="slds-modal__close" onclick="{!c.handleClose}"/>
+
+				  	<h2 id="mainHeader" class="slds-text-heading--medium">{!v.modalTitle}</h2>
+				</div>
+				<div class="slds-modal__content slds-p-around--medium">
+				  	{!v.modalBody}
+
+				</div>
+			</div>
+		</div>
+		<div class="slds-backdrop slds-backdrop--open"></div>
+
+
+	</div>
+
+</aura:component>

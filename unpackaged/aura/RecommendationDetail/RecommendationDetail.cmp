@@ -1,0 +1,8 @@
+<aura:component implements="flexipage:availableForRecordHome,force:hasRecordId" access="global">
+	<aura:attribute name="recordId" type="String" />
+
+	<div>
+		<iframe src="{!'/apex/RecommendationsList?lightning=1&amp;id=' + v.recordId}" width="100%" height="900" aura:id="recListContainer" class="recListContainer" />
+	</div>
+	
+</aura:component>

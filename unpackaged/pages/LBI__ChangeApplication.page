@@ -1,0 +1,24 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.ChangeApplicationController"
+			action="{!initPage}">
+
+<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}" />
+<apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js" />
+<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+
+<apex:form >
+
+<div id="lattice-admin">
+
+	<apex:pageMessages />
+
+	<c:AppChangeComponent id="appChangeComponent"
+						useInAdminScreen="false"
+						destinationVFPage="ChangeApplication"
+						performDMLOnComponent="true"
+						showMenuOpen="true"/>
+</div>
+
+</apex:form>
+
+</apex:page>

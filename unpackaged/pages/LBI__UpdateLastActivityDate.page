@@ -1,0 +1,6 @@
+<apex:page sidebar="{!showSidebar}"
+			controller="LBI.UpdateLastActivityDateController"
+			action="{!updateRecs}">
+
+	<apex:pageMessages id="pageMessages" />
+</apex:page>

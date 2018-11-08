@@ -1,0 +1,175 @@
+.THIS.rec-display-name {
+    color: #2E2E2C;
+    display: inline-block;
+    font-size: 22px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    font-family: "ProximaNova-Regular", helvetica, arial, sans-serif;
+}
+
+.THIS .icon {
+	font-size: 30px;
+	color: #DBDAD5;
+}
+
+.THIS .rec-title {
+    float: left;
+    height: 32px;
+    margin-right: 10px;
+    padding: 0;
+    width: 32px;
+}
+
+.THIS.account-details {
+    margin-bottom: 20px;
+}
+
+.THIS .rating-rank {
+	display: inline-block;
+    margin: -22px 0 0 0;
+}
+
+.THIS .description {
+	display: block;
+	color: #2E2E2C;
+	font-size: 12px;
+	margin: 5px auto 20px;
+	width: 100%;
+}
+
+.THIS .highlights {
+	display: inline-block;
+    margin: 0;
+    padding: 0;
+}
+
+.THIS .highlights li:first-child {
+    display: inline-block;
+    padding-left: 0;
+}
+
+.THIS .highlights li {
+    margin: 0 10px 10px 0;
+    padding: 0 20px 0 0;
+    /*background: url(/resource/installAssets/img/divider-bg.png) right no-repeat;*/
+    color: #333;
+    display: inline-block;
+    font-size: 10px;
+    text-transform: uppercase;
+}
+.THIS .highlights li:last-child {
+  background: none;
+}
+
+.THIS .revenue {
+   color: #3971B8;
+   display: block;
+   font-family: 'ProximaNova-Regular', helvetica, arial, sans-serif;
+   font-size: 13px;
+   font-style: normal;
+   margin-top: 10px;
+   text-transform: none;
+}
+
+.THIS .created {
+   color: #3971B8;
+   display: block;
+   font-family: 'ProximaNova-Regular', helvetica, arial, sans-serif;
+   font-size: 13px;
+   font-style: normal;
+   margin-top: 10px;
+   margin-top: 10px;
+   text-transform: none;
+}
+
+.THIS .actions-taken {
+ display: block;
+
+}
+
+.THIS .actions-taken .icon-span {
+ border: 0;
+   color: #3971B8;
+   display: inline-block;
+   font-size: 13px;
+   margin: 0;
+   min-height: 0;
+   padding: 8px 0 0 0;
+   width: auto;
+}
+
+
+
+.THIS .rating-rank {
+	display: inline-block;
+	margin-left: 0px;
+    margin: -22px 0 0 0;
+    vertical-align: middle;
+}
+
+.THIS .overlay {
+    /*rgb(244, 246, 249)*/
+    background-color: #FFFFFF;
+    border-radius: 50%;
+    font-size: 12px;
+    height: 32px;
+    margin-left: 3px;
+    margin-top: 3px;
+    line-height: 32px;
+    position: absolute;
+    text-align: center;
+    width: 32px;
+}
+
+.THIS .condensed {
+    font-family: 'ProximaNovaAExCn-Light', helvetica, arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: -.025em;
+}
+
+.THIS .progress-radial {
+    border: 1px solid #fff;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-right-style: solid;
+    border-bottom-style: solid;
+    border-left-style: solid;
+    border-top-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+    border-left-color: rgb(255, 255, 255);
+    -moz-border-top-colors: none;
+    -moz-border-right-colors: none;
+    -moz-border-bottom-colors: none;
+    -moz-border-left-colors: none;
+    border-image-source: none;
+    border-image-slice: 100% 100% 100% 100%;
+    border-image-width: 1 1 1 1;
+    border-image-outset: 0 0 0 0;
+    border-image-repeat: stretch stretch;
+    border-radius: 50%;
+    border-top-left-radius: 50%;
+    border-top-right-radius: 50%;
+    border-bottom-right-radius: 50%;
+    border-bottom-left-radius: 50%;
+    height: 40px;
+    width: 40px;
+    margin-bottom: 7px;
+}
+
+.THIS .progress-100 {
+  background-image: linear-gradient(270deg, #6fbf4a 50%,rgba(0,0,0,0) 50%,rgba(0,0,0,0)),linear-gradient(90deg, #6fbf4a 50%,#f3f3f3 50%,#f3f3f3);
+}
+.THIS .progress-75 {
+  background-image: linear-gradient(270deg, #e26129 50%,rgba(0,0,0,0) 50%,rgba(0,0,0,0)),linear-gradient(0deg, #e26129 50%,#f3f3f3 50%,#f3f3f3);
+}
+
+.THIS .progress-50 {
+  background-image: linear-gradient(270deg, #febb12 50%,rgba(0,0,0,0) 50%,rgba(0,0,0,0)),linear-gradient(-90deg, #febb12 50%,#f3f3f3 50%,#f3f3f3);
+}
+.THIS .progress-25 {
+  background-image: linear-gradient(90deg, #f3f3f3 50%,rgba(0,0,0,0) 0%,rgba(0,0,0,0)),linear-gradient(0deg, #f3f3f3 50%,#d32027 0%,#d32027);
+}

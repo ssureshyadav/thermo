@@ -1,0 +1,73 @@
+<aura:component controller="LBI.LCRecommendationCPController"> <!-- implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName" access="global">-->
+	<aura:attribute access="global" name="recordId" type="String" />
+	<aura:attribute access="global" name="sObjectName" type="String" />
+
+	<aura:attribute access="public" name="pageReturn" type="Object" />
+
+	<aura:attribute access="public" name="url" type="String"/>
+
+	<!-- this is the way to link to a resource, according sfdcfox here http://salesforce.stackexchange.com/questions/143630 -->
+	<!-- Needed for the icons/fonts -->
+	<!--<ltng:require styles="/resource/installAssets/styles/main.css"/>-->
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+	<aura:if isTrue="{!v.pageReturn.danteError != ''}" >
+		<div class="message errorM3">
+			{!v.pageReturn.danteError}
+		</div>
+	</aura:if>
+
+  <lightning:layout verticalAlign="start" multipleRows="true" pullToBoundary="small" class="lattice-details">
+    <!-- <lightning:layoutItem flexibility="auto" size="3" mediumDeviceSize="3"> -->
+		<div id="navigation-wrapper" class="slds-col slds-size--3-of-12 slds-medium-size--3-of-12">
+      		<ul class="profile-navigation">
+	         	<aura:iteration items="{!v.pageReturn.displayGroups}" var="group">
+					<li>
+					  	<a class="{!'profile-link ' + (group.isSelected == true ? 'active' : '')}" id="{!'link' + group.groupId}" onclick="{!c.showSection}">
+					      	<span class="count" id="{!'span' + group.groupId}">{!group.numberOfCompleteFields}</span>
+					      	{!group.groupName}
+					  	</a>
+					</li>
+	          	</aura:iteration>
+	        </ul>
+		</div>
+    <!-- </lightning:layoutItem> -->
+    <!-- <lightning:layoutItem flexibility="auto" size="9" mediumDeviceSize="9" class="slds-p-left- -small"> -->
+		<div id="field-wrapper" class="slds-col slds-size--9-of-12 slds-medium-size--9-of-12">
+          	<aura:iteration items="{!v.pageReturn.displayGroups}" var="group">
+              	<div class="toggle-content" id="{!'category' + group.groupId}" style="{!group.isSelected ? '' : 'display:none;'}">
+					<div id="outputTable" class="hidden-xs toBeHidden">
+	                    <div id="field-items" class="slds-grid slds-wrap">
+	                        <aura:iteration items="{!group.fields}" var="field">
+	                            <aura:if isTrue="{!field.fieldValue != ''}" >
+	                                <div class="data slds-grid slds-size--1-of-1">
+	                                    <span class="title" title="{!field.displayName}">
+	                                        {!field.displayName}
+	                                    </span>
+	                                    <span class="value">
+	                                        <LBI:DynamicDisplayField fieldValue="{!field.fieldValue}" fieldType="{!field.fieldType}" />
+	                                    </span>
+	                                </div>
+	                            </aura:if>
+	                            <aura:if isTrue="{!field.fieldValue == ''}" >
+	                                <div class="data slds-grid slds-size--1-of-1 empty">
+	                                    <span class="title">
+	                                        {!field.displayName}
+	                                    </span>
+	                                    <div class="value" >
+	                                        <!-- Nothing here. -->
+	                                    </div>
+	                                </div>
+	                            </aura:if>
+	                        </aura:iteration>
+	                    </div>
+              		</div>
+              	</div>
+          	</aura:iteration>
+		</div>
+    <!-- </lightning:layoutItem> -->
+  </lightning:layout>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

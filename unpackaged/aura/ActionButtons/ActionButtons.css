@@ -1,0 +1,14 @@
+.THIS.buttonList  {
+	float:right;
+}
+.THIS.hideMe {
+	display: none
+}
+
+.THIS .slds-modal .slds-modal__content {
+	/*overflow: visible!important;*/
+}
+
+.THIS .slds-modal .slds-modal__header {
+	margin-top: 30px;
+}

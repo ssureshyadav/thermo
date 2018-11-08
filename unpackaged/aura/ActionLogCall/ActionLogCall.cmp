@@ -1,0 +1,63 @@
+<aura:component controller="LBI.LCActionActivityController">
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="recommendations" type="Object[]" />
+
+	<aura:attribute access="public" name="closingMessage" type="String" />
+	<aura:attribute access="public" name="details" type="Object" />
+	<aura:attribute access="public" name="labels" type="Object" />
+	<aura:attribute access="public" name="whereClause" type="String"/>
+	<aura:attribute access="public" name="subject" type="String"/>
+	<aura:attribute access="public" name="description" type="String"/>
+
+    <aura:registerEvent name="cancel" type="LBI:ModalCancel"/>
+    <aura:registerEvent name="save" type="LBI:ModalSave"/>
+
+    <aura:handler name="inputChanged" event="LBI:InputValueChanged" action="{!c.handleLookupChange}" includeFacets="true"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <div class="slds-form--stacked slds-p-around--x-small slds-m-bottom--x-small">
+      	<div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.subject}</label>
+        	<div class="slds-form-element__control">
+          		<ui:inputText value="{!v.subject}"/>
+        	</div>
+        </div>
+        <div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.description}</label>
+        	<div class="slds-form-element__control">
+          		<ui:inputTextArea value="{!v.description}"/>
+        	</div>
+        </div>
+        <aura:if isTrue="{!v.details.workflowType == 'RECOMMENDATION'}">
+        	<div class="slds-form-element">
+	        	<label class="slds-form-element__label">{!v.labels.account}</label>
+	        	<div class="slds-form-element__control">
+	          		{!v.details.relatedName}
+	        	</div>
+	        </div>
+            <div class="slds-form-element">
+        		<!-- Here, any LK to contact would do, really-->
+          		<LBI:InputLookup label="Contact" sObjectAPIName="{!v.details.objectName}" fieldAPIName="{!v.details.fieldName}"
+    					whereClause="{!v.details.whereClause}" subtitleField=""
+    					listIconClass="standard:contact" />
+	        </div>
+        </aura:if>
+        <aura:if isTrue="{!v.details.workflowType == 'LEAD'}">
+	        <div class="slds-form-element">
+	        	<label class="slds-form-element__label">{!v.labels.lead}</label>
+	        	<div class="slds-form-element__control">
+	          		{!v.details.relatedName}
+	        	</div>
+	        </div>
+        </aura:if>
+    </div>
+
+    <div class="actionButtons">
+    	<lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelEvent}" />
+		<lightning:button variant="brand" label="Save"  onclick="{!c.handleSaveEvent}" />
+    </div>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

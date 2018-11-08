@@ -1,0 +1,18 @@
+<apex:page standardController="Account" extensions="team_members" showHeader="false" readOnly="true" sidebar="false" >
+   
+
+  <apex:pageBlock mode="maindetail">
+ <apex:form > 
+      <apex:outputLabel value="No records to display" rendered="{!mess}"/>
+      <apex:pageBlockTable value="{!atm}" var="a" id="list" rendered="{!!mess}">
+        <apex:column value="{!a.user.name}"/>
+        <apex:column value="{!a.TeamMemberRole}"/>
+        <apex:column value="{!a.AccountAccessLevel}"/>
+        <apex:column value="{!a.Account.owner.name}">
+        <apex:facet name="header">Account Owner</apex:facet>
+    </apex:column> 
+        
+      </apex:pageBlockTable>
+    </apex:form>
+  </apex:pageBlock>
+    </apex:page>

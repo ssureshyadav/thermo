@@ -1,0 +1,70 @@
+<apex:page sidebar="{!showSidebar}"
+ 		   standardController="LBI__Play__c"
+ 		   extensions="LBI.ExpirePlayController"
+ 		   action="{!initScreen}">
+
+<apex:form id="theForm">
+
+	<apex:outputPanel layout="none" id="poller" rendered="{!isPollerActive}" >
+		<apex:actionPoller action="{!checkCurrentJob}" interval="5" reRender="theForm"/>
+	</apex:outputPanel>
+	
+	<apex:sectionHeader title="{!$Label.lbi__exp_title}" subtitle="{!currentPlay.LBI__DisplayName__c}" />
+
+	<apex:pageMessages id="messages"/>
+
+	<apex:pageBlock mode="maindetail">
+		<apex:pageBlockButtons location="bottom">
+			<apex:commandButton value="{!$Label.lbi__exp_expirerecommendationsnow}" id="expiryBtn" action="{!expireRecommendations}" onclick="if (! confirm('{!$Label.lbi__exp_expirerecommendationsconfirm}')) { return false;}" disabled="{!! showSaveButton || recommendationsToExpire == 0}"/>
+			<apex:commandButton value="{!$Label.lbi__lab_cancel}" action="{!cancel}" />
+		</apex:pageBlockButtons>
+
+		<apex:pageBlockSection title="" collapsible="false" columns="2">
+			<apex:pageBlockSectionItem >
+				<apex:outputLabel value="{!$Label.lbi__exp_recommendationcount}" />
+				<apex:outputText value="{0, number, ###,###}" id="recNumber">
+					<apex:param value="{!recommendationsToExpire}" />
+				</apex:outputText>
+			</apex:pageBlockSectionItem>
+			<apex:pageBlockSectionItem />
+			<apex:pageBlockSectionItem >
+				<apex:outputLabel value="{!$Label.lbi__exp_expireopenrecommendations}" />
+				<apex:inputCheckbox value="{!expireOpenRecommendations}" >
+					<apex:actionSupport event="onclick" action="{!refreshRecordsToExpire}" reRender="recNumber, messages, expiryBtn" />
+				</apex:inputCheckbox>
+			</apex:pageBlockSectionItem>
+			<apex:pageBlockSectionItem >
+				<apex:outputLabel value="{!$Label.lbi__exp_expireinprogressrecommendations}" />
+				<apex:inputCheckbox value="{!expireInProgressRecommendations}" >
+					<apex:actionSupport event="onclick" action="{!refreshRecordsToExpire}" reRender="recNumber, messages, expiryBtn" />
+				</apex:inputCheckbox>
+			</apex:pageBlockSectionItem>
+		</apex:pageBlockSection>
+
+		<apex:pageBlockSection title="{!$Label.lbi__exp_playruns}" collapsible="false" columns="1">
+			<apex:pageBlockTable value="{!playRuns}" var="pr">
+				<apex:column headerValue="">
+					<apex:inputCheckbox value="{!pr.selected}">
+						<apex:actionSupport event="onclick" action="{!refreshRecordsToExpire}" reRender="recNumber, messages, expiryBtn" />
+					</apex:inputCheckbox>
+				</apex:column>
+				<apex:column headerValue="{!$ObjectType.LBI__PlayRun__c.fields.LBI__RunDate__c.label}">
+					<c:FormattedDateTime datetimeValue="{!pr.runDate}" datetimeFormat="MM/dd/yyyy" />
+				</apex:column>
+				<apex:column headerValue="{!$ObjectType.LBI__PlayRun__c.fields.LBI__Open__c.label}">
+					<apex:outputText value="{0, number, ###,###}">
+						<apex:param value="{!pr.open}" />
+					</apex:outputText>
+				</apex:column>
+				<apex:column headerValue="{!$ObjectType.LBI__PlayRun__c.fields.LBI__InProgress__c.label}">
+					<apex:outputText value="{0, number, ###,###}">
+						<apex:param value="{!pr.inProgress}" />
+					</apex:outputText>
+				</apex:column>
+			</apex:pageBlockTable>
+		</apex:pageBlockSection>
+
+	</apex:pageBlock>
+</apex:form>
+
+</apex:page>

@@ -1,0 +1,6 @@
+<apex:page sidebar="false" showHeader="false">
+	<apex:outputLabel value="{!$Label.lbi__info_closethiswindow}" />
+	<script type="text/javascript" >
+		window.close();
+	</script>
+</apex:page>

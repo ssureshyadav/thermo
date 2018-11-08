@@ -1,0 +1,177 @@
+<apex:page standardController="LBI__Recommendation__c"
+			extensions="LBI.MobileRecommendationConvertController"
+			showQuickActionVfHeader="false"
+			id="thePage"
+			standardStylesheets="false" 
+			showHeader="false" 
+			sidebar="false" >
+
+	<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+
+	<apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"  />
+	<apex:includeScript value="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/js/bootstrap-select.min.js" />
+	<apex:stylesheet value="//cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.10.0/css/bootstrap-select.min.css" />
+	<apex:stylesheet value="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" />
+
+	<apex:includeScript value="{!URLFOR($Resource.LBI__RecommendationListJavascript)}" />
+	<apex:stylesheet value="{!URLFOR($Resource.LBI__SLDS092, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+	<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+	<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}" />
+	<apex:includeScript value="{!URLFOR($Resource.LBI__SLDSValidator)}" />
+
+	<script type="text/javascript" >
+        lejQuery(document).ready(function(){
+
+            enableDisableSaveButton(false);
+
+            lejQuery('.selectpicker').selectpicker();
+
+            lejQuery('.selectpicker').on('change', function (e) {
+                var value = lejQuery(this).val();
+                var joinedVal = value.join(';');
+
+                var objId = lejQuery(this).attr('id').substring('6'); //eliminate 'multi-'
+
+                var dest = 'thePage:theForm:repeater:' + objId + ':hiddenMulti';
+
+                console.log(joinedVal);
+                lejQuery(esc(dest)).val(joinedVal);
+                console.log(lejQuery(esc(dest)).val());
+
+            });
+            
+            if ({!isInLightning}) {
+            	lejQuery("div.slds").css("padding", "10px");
+            }
+
+        });
+
+        function esc(myid) {
+            return '#' + myid.replace(/(:|\.)/g,'\\\\$1');
+        }
+
+        function enableDisableSaveButton(value) {
+            var theButton = lejQuery("[id$='saveButton']");
+
+            if (value) {
+                lejQuery(theButton).hide();
+            } else {
+                lejQuery(theButton).show();
+            }
+            //lejQuery(theButton).attr('disabled', value);
+        }
+	</script>
+	<style type="text/css">
+        body {
+            display: block;
+            margin: 8px;
+            background: rgb(244, 246, 249);
+        }
+        label {
+            display: inline-block;
+            color: #54698d;
+            font-size: 12px;
+            line-height: 1.5;
+            margin-right: 12px;
+            margin-bottom: 4px;
+            font-weight: normal;
+        }
+	</style>
+
+	<apex:form id="theForm">
+		<!-- COD-1185 This is done as an ActionFunction to avoid the "Go" key in iOS to submit the form -->
+		<apex:actionFunction action="{!save}" name="jsSave" />
+
+		<div class="slds">
+			<div class="slds-grid slds-wrap">
+				<div class="slds-col slds-size--1-of-1">
+					<!--<apex:commandButton styleClass="slds-button slds-button--neutral slds-float--left" action="{!cancel}" value="Cancel" id="cancelButton" />-->
+					<a href="#" class="slds-button slds-button--neutral slds-float--left" onclick="cancel();" id="cancelButton">{!$Label.LAB_Cancel}</a>
+					<!-- COD-1185 This is done as an "a" tag instead of an apex:commandbuttom to avoid the "Go" key in iOS to submit the form
+                        <apex:commandButton styleClass="slds-button slds-button--brand slds-float--right" action="{!save}" value="Save" id="saveButton"  onclick="enableDisableSaveButton(true);" />
+                        -->
+					<a href="#" class="slds-button slds-button--brand slds-float--right" id="saveButton" onclick="enableDisableSaveButton(true);jsSave();">{!$Label.LAB_Save}</a>
+				</div>
+
+				<!-- This is not needed, the fields below will show the errrors with visuals, messages and colored inputs
+                    <div class="slds-col slds-size--1-of-1">
+                        <apex:pageMessages id="pageMessages" />
+                    </div>
+                    -->
+				<apex:outputPanel layout="none" rendered="{!showConvertOppButton}">
+					<div class="slds-col slds-size--1-of-1 slds-m-vertical--small">
+						<h2 class="slds-text-heading--medium">
+							<apex:outputText value="{!$Label.lbi__rep_convert_opportunity}" />
+						</h2>
+					</div>
+				</apex:outputPanel>
+
+				<div class="slds-col slds-size--1-of-1">
+					<div class="slds-form-element">
+						<apex:variable var="count" value="{!0}" />
+						<apex:repeat value="{!oppFields}" var="oppFieldName" id="repeater" >
+
+							<apex:outputPanel layout="none" rendered="{!$ObjectType.Opportunity.fields[oppFieldName].type != 'boolean' && $ObjectType.Opportunity.fields[oppFieldName].type != 'reference' && $ObjectType.Opportunity.fields[oppFieldName].type != 'multipicklist'}">
+								<apex:outputLabel styleClass="slds-form-element__label slds-m-top--small" value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" id="theLabel" />
+								<apex:inputField styleClass="slds-input" value="{!newOpp[oppFieldName]}" id="theField" />
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!$ObjectType.Opportunity.fields[oppFieldName].type == 'multipicklist'}">
+								<apex:outputLabel styleClass="slds-form-element__label slds-m-top--small" value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" id="theMultiLabel" />
+								<select class="selectpicker" multiple="true" data-width="100%" id="multi-{!count}">
+									<apex:repeat value="{!picklistValuesByField[oppFieldName]}" var="opt">
+										<option value="{!opt.value}">
+											<apex:outputText value="{!opt.label}" />
+										</option>
+									</apex:repeat>
+								</select>
+								<apex:inputHidden value="{!newOpp[oppFieldName]}" id="hiddenMulti" />
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!$ObjectType.Opportunity.fields[oppFieldName].type == 'boolean'}">
+								<br/><br/>
+								<label class="slds-checkbox" style="display:block;">
+									<apex:inputField value="{!newOpp[oppFieldName]}"/>
+									<span class="slds-checkbox--faux"></span>
+									<span class="slds-form-element__label">
+										<apex:outputText value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" />
+									</span>
+								</label>
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!$ObjectType.Opportunity.fields[oppFieldName].type == 'reference'}">
+								<apex:outputLabel styleClass="slds-form-element__label slds-m-top--small" value="{!$ObjectType.Opportunity.fields[oppFieldName].label}" />
+								<apex:inputField value="{!newOpp[oppFieldName]}" id="theRefField" />
+								<!-- <c:Typeahead searchBoxId="recordId{!oppFieldName}" placeholder="Search..." destinationForSelectedId="thePage:theForm:repeater:{!count}:hiddenRef" primaryFocusField="Name" key="Id" secondaryFields="" whereClause="" objectName="{!$ObjectType.Opportunity.fields[oppFieldName].referenceTo[0]}" mapParameters="" required="true">
+  			               			</c:Typeahead>
+
+					     			<input type="hidden" id="relatedObjectId_{!oppFieldName}" />
+					     			<apex:inputHidden id="hiddenRef" value="{!newOpp[oppFieldName]}" /> -->
+							</apex:outputPanel>
+
+							<apex:variable var="count" value="{!count+1}"/>
+						</apex:repeat>
+					</div>
+				</div>
+
+			</div>
+		</div>
+		<!-- Doing this because, once installed, we're having problems with this field and the standard controller -->
+		<apex:inputHidden value="{!LBI__Recommendation__c.LBI__LeadId__c}" />
+	</apex:form>
+
+	<script>
+        function cancel(){
+          if ('{!$CurrentPage.parameters.fromLead}' == 'true') {
+            sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+          } else {
+            sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+          }
+        }
+        window.onkeydown=function(){ // Workaround for known issue with SFDC(https://success.salesforce.com/issues_view?id=a1p30000000T5l1AAC)
+        	window.focus();
+        }
+	</script>
+
+
+</apex:page>

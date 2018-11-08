@@ -1,0 +1,81 @@
+<apex:page id="AppSelection"
+           sideBar="false"
+           controller="LBI.AppSelectionController"
+           action="{!onLoad}">
+    <apex:includeScript value="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"/>
+    <apex:includeScript value="{!URLFOR($Resource.LBI__installAssets, 'js/bootstrap.min.js')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets,'styles/admin.css')}"/>
+    <apex:stylesheet value="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css"/>
+    <apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+    <apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+
+    <script type="text/javascript">
+        var lejQuery = jQuery.noConflict();
+
+        $( document ).ready(function() {
+        })
+
+    </script>
+
+    <style type="text/css">
+        .configured-indicator {
+            position: absolute;
+            left: 50%;
+            margin-left: -40px;
+            margin-top: 10px;
+
+            font-size: 14px;
+            margin-top: 20px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+
+    <apex:pageMessages rendered="{! !licensesInstalled}" id="license-messages" />
+
+    <apex:form id="theForm">
+
+    <!-- APP SELECTION SECTION -->
+    <apex:outputPanel layout="none" rendered="{!licensesInstalled}"> 
+        <apex:pageMessages id="app-selection-messages" />
+        
+        <div class="app-selection">
+            <div class="container">                                
+                <div class="row">
+                    <div class="col-lg-12">
+                        <h1>{!$Label.AIS_SelectAppTitle}</h1>
+                    </div>
+                </div><!-- End .row -->
+                <div class="row row-eq-height">
+                    <div class="col-lg-6">
+                        <div class="lp-button" onclick="selectLPApp()">
+                            <h2>{!$Label.AIS_LPAppTitle}</h2>
+                            <apex:outputPanel rendered="{!isLPConfigured}">
+                                <div class="configured-indicator">
+                                    <span class="glyphicon glyphicon-ok" /> {!$Label.AIS_ConfiguredAppIndicator}
+                                </div>
+                            </apex:outputPanel>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="cg-button" onclick="selectCGApp()">
+                            <h2>{!$Label.lbi__ais_cgapptitle}</h2>
+                            <apex:outputPanel rendered="{!isCGConfigured}">
+                                <div class="configured-indicator">
+                                    <span class="glyphicon glyphicon-ok" /> {!$Label.AIS_ConfiguredAppIndicator}
+                                </div>
+                            </apex:outputPanel>
+                        </div>
+                    </div>
+                </div><!-- End .row -->
+
+            </div><!-- End .container -->
+
+            <apex:actionFunction action="{!selectLPApp}" name="selectLPApp" />
+            <apex:actionFunction action="{!selectCGApp}" name="selectCGApp" />
+        </div>
+    </apex:outputPanel>
+    <!-- End APP SELECTION SECTION -->
+
+    </apex:form>
+
+</apex:page>

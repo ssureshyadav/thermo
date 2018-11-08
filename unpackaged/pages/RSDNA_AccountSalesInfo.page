@@ -1,0 +1,141 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : sanneboinasuresh.yadav@nttdata.com    
+    Company     : NTTDATA
+    Date        : 31 March,2017
+    Description : To display Account YTD Sales in 3 columns
+    
+-->
+
+<apex:page standardController="Account" >
+    <apex:outputPanel rendered="{!($User.UIThemeDisplayed == 'Theme3'||$User.UIThemeDisplayed == 'Theme2')}">
+    <style>
+    .bPageBlock .detailList .labelCol
+    {
+        width:12% !important;
+    }
+    </style>
+    <apex:pageBlock >
+        <apex:pageBlockSection collapsible="true" columns="3" >
+              <apex:outputField value="{!account.RSD_YTD_Sales__c}"/>
+              <apex:outputField value="{!account.RSD_YTD_Gross_Profit_Dollars__c}"/>
+              <apex:outputField value="{!account.RSD_YTD_Gross_Profit_Pct__c}"/>
+              <apex:outputField value="{!account.RSD_PYTD_Sales__c}"/>
+              <apex:outputField value="{!account.RSD_PYTD_Gross_Profit_Dollars__c}"/>
+              <apex:outputField value="{!account.RSD_PYTD_Gross_Profit_Pct__c}"/>
+              <apex:outputField value="{!account.RSD_LY_Sales__c}"/>
+              <apex:outputField value="{!account.RSD_LY_Gross_Profit_Dollars__c}"/>
+              <apex:outputField value="{!account.RSD_LY_Gross_Profit_Pct__c}"/>
+              <apex:outputField value="{!account.RSD_Sales_Date__c}"/>
+        </apex:pageBlockSection>
+    </apex:pageBlock>
+  </apex:outputPanel>
+  <apex:outputPanel rendered="{!($User.UIThemeDisplayed == 'Theme4d'||$User.UIThemeDisplayed == 'Theme4t')}">
+      <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.min.css')}" />
+        <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+        <div class="BBLDS">
+            <div class="slds-grid divScroll slds-wrap slds-scrollable--y" style ="height:200px;">
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="YTD Sales"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_YTD_Sales__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="YTD GP$"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_YTD_Gross_Profit_Dollars__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="YTD GP%"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_YTD_Gross_Profit_Pct__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="PYTD Sales"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_PYTD_Sales__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="PYTD GP$"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_PYTD_Gross_Profit_Dollars__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="PYTD GP%"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_PYTD_Gross_Profit_Pct__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="LY Total Sales"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_LY_Sales__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="LY Total GP$"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_LY_Gross_Profit_Dollars__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="LY Total GP%"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_LY_Gross_Profit_Pct__c}"/>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="slds-col--padded slds-size--1-of-3 slds-small-size--1-of-3 slds-m-top--x-small">
+                        <span class="slds-form-element__label">
+                            <apex:outputLabel value="Sales Date"></apex:outputLabel>
+                        </span>
+                        <div class="slds-form-element__control slds-has-divider--bottom">
+                            <span class="slds-form-element__static" style="margin-top: -0.5em;">
+                                <apex:outputField value="{!account.RSD_Sales_Date__c}"/>
+                            </span>
+                        </div>
+                    </div>
+            </div>
+        </div>
+  </apex:outputPanel>
+</apex:page>

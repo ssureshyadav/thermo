@@ -1,0 +1,26 @@
+<aura:component controller="LBI.LCRecommendationTabsController" >
+    <aura:attribute access="public" name="parentRecordId" type="String" required="true" />
+    <aura:attribute access="public" name="objectContainer" type="String" required="true"/>
+    <aura:attribute access="public" name="isDetail" type="Boolean" default="false"/>
+    <aura:attribute access="public" name="showRevenue" type="Boolean" default="false" />
+    <aura:attribute access="public" name="showScore" type="Boolean" default="false" />
+
+    <aura:attribute access="public" name="tabs" type="Object[]"/>
+    <aura:attribute access="public" name="defaultTab" type="String"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <aura:dependency resource="markup://LBI:RecommendationPage" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:RecommendationIndividual" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:RecommendationIFrame" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:RecommendationCompanyProfile" type="COMPONENT"/>
+    <aura:dependency resource="markup://LBI:RecommendationSupplementalInformation" type="COMPONENT"/>
+
+    <lightning:tabSet variant="default" selectedTabId="{!v.defaultTab}" onselect="{!c.handleTabFocusEvent}">
+        <aura:iteration items="{!v.tabs}" var="tab">
+            <span>
+            <lightning:tab label="{!tab.label}" id="{!tab.name}" ></lightning:tab>
+            </span>
+        </aura:iteration>
+    </lightning:tabSet>
+</aura:component>

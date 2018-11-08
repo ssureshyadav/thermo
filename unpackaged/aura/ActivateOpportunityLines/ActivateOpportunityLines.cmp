@@ -1,0 +1,21 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : sanneboinasuresh.yadav@nttdata.com    
+    Company     : NTTDATA
+    Date        : 16 June,2017
+    Description : To delete opportunity line items related to quote and relation with opportunity
+                  W-000177:activate all Opportunity Products Associated with a related Quote
+				  T-00367 : Dev - Create / Update code to make opportunity product lines active when "Activate Opportunity Lines" button is pressed
+    
+-->
+<aura:component controller="RSDNA_LtngRemoveQuoteFromOpportunity" implements="flexipage:availableForRecordHome,force:hasRecordId,force:lightningQuickActionWithoutHeader" access="global" >
+	<aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="response" type="String" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <div class="msg">
+        {!v.response}
+    </div>
+    <div style="float:right;">
+        <lightning:button label="Close" onclick="{!c.refreshPage}" />
+    </div>
+</aura:component>

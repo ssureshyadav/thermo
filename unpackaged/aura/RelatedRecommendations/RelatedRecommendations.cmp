@@ -1,0 +1,88 @@
+<aura:component controller="LBI.RelatedRecommendationsController" implements="flexipage:availableForRecordHome,force:hasRecordId" access="global">
+<aura:attribute name="recordId" type="String" />
+<aura:attribute name="relatedType" type="String" default="Account" access="global"/>
+<aura:attribute name="recommendations" type="LBI.LtngRecommendationWrapper[]" />
+<aura:attribute name="labels" type="List" />
+<aura:attribute name="namespace" type="String" />
+<aura:attribute name="showSpinner" type="Boolean" default="true" />
+
+<aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+
+<article class="cardbackground">
+	<div class="slds-card__header slds-grid">
+      <header class="slds-media slds-media--center slds-has-flexi-truncate">
+        <LBI:SVGRenderer svgPath="/resource/SLDS213/assets/icons/standard-sprite/svg/symbols.svg#insights" category="standard" name="insights" size="large" />
+        <div class="slds-media__body slds-truncate">
+          <h2>
+            <span class="slds-text-heading--small">&nbsp;Related Recommendations for the same {!v.relatedType}</span>
+          </h2>
+        </div>
+      </header>
+    </div>
+	<div class="slds-card__body">
+		<div class="slds-card__body--inner slds-truncate">
+			<!-- Repeat Recomendations -->
+	        <aura:iteration items="{!v.recommendations}" var="rec">
+				<div class="slds-tile">
+		          <h3 class="slds-page-header__title slds-truncate slds-m-bottom--x-small" title="{!rec.accountName}">
+					  <a href="{!'/' + rec.id}">{!v.relatedType == 'Account' ? rec.playDisplayName : rec.accountName}</a>
+				  </h3>
+		          <div class="slds-tile__detail slds-text-body--small">
+		            <dl class="slds-dl--horizontal">
+		              <dt class="slds-dl--horizontal__label info">
+		                <span class="slds-truncate" title="Type">Lattice Score:</span>
+		              </dt>
+		              <dd class="slds-dl--horizontal__detail slds-tile__meta">
+		                <div class="{! 'progress-radial progress-' + rec.rank}">
+		                  <div class="overlay">
+		                    <span>{!rec.rank}</span>
+		                  </div>
+		                </div>
+		              </dd>
+		              <dt class="slds-dl--horizontal__label info">
+		                <span class="slds-truncate" title="Type">{!v.relatedType == 'Play' ? 'Play' : 'Account'}:</span>
+		              </dt>
+		              <dd class="slds-dl--horizontal__detail slds-tile__meta">
+		                <p>{!v.relatedType == 'Play' ? rec.playDisplayName : rec.accountName}</p>
+		              </dd>
+		              <dt class="slds-dl--horizontal__label info">
+		                <span class="slds-truncate" title="Type">Days Active:</span>
+		              </dt>
+		              <dd class="slds-dl--horizontal__detail slds-tile__meta">
+		                <span class="slds-truncate" title="Visit">{!rec.ageInDays}</span>
+		              </dd>
+		              <dt class="slds-dl--horizontal__label info">
+		                <span class="slds-truncate" title="Type">Est. Revenue:</span>
+		              </dt>
+		              <dd class="slds-dl--horizontal__detail slds-tile__meta">
+		                <ui:outputCurrency value="{!rec.monetaryValue}" />
+		              </dd>
+		              <dt class="slds-dl--horizontal__label info">
+		                <span class="slds-truncate" title="Type">Status:</span>
+		              </dt>
+		              <dd class="slds-dl--horizontal__detail slds-tile__meta">
+		                <span class="slds-truncate" title="Visit">{!rec.status}</span>
+		              </dd>
+		            </dl>
+		            <hr/>
+		          </div>
+			  </div>
+			</aura:iteration>
+		</div>
+	</div>
+	<div class="slds-card__footer">
+      <div class="{!v.showSpinner ? 'slds-spinner_container loading slds-m-top--medium' : 'slds-hide'}">
+          <div class="slds-spinner--brand slds-spinner slds-spinner--medium" role="alert">
+            <span class="slds-assistive-text">Loading</span>
+            <div class="slds-spinner__dot-a"></div>
+            <div class="slds-spinner__dot-b"></div>
+          </div>
+        </div>
+	</div>
+	<div class="{! !v.showSpinner &amp;&amp; (v.recommendations.length == 0) ? 'slds-text-body--regular slds-align--absolute-center slds-m-top--medium' : 'slds-hide'}">
+		No recommendations found with the specified filter
+	</div>
+    <!-- <a class="{!v.recommendations.length != 0 ? '' : 'slds-hide'}" href="javascript:void()" onclick="{!c.viewAllRecommendations}">View All <span class="slds-assistive-text">View All</span></a> -->
+</article>
+
+</aura:component>

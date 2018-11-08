@@ -1,0 +1,28 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,force:lightningQuickAction,force:hasRecordId">
+    
+    <!-- Use an attribute to load record data -->
+    <link href='/resource/bootstrap/' rel="stylesheet"/>
+    <aura:attribute name="account" type="Account[]"/>
+    <aura:attribute name="quote" type="AccountController.QuoteHeaders[]"/>
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="searchValue" type="String" />
+   <!--Handle component initialization -->
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}" />
+    
+    <input id="searchField" type="text" value="{!v.searchValue}" /> 
+    <div class="row">
+         <aura:iteration items="{!v.quote}" var="exp">
+             {!exp}
+             {!exp.quoteHeader}
+			<div class="listRecord recordLayout cAccounts">
+                <div class="itemTitle">{!exp.checked}</div>
+                <div class="itemTitle">Name
+                    <ui:outputText value="{!exp.quoteHeader.RSD_Customer_PO__c}"/>
+                </div>
+                <div class="recordItem">Id
+                	<ui:outputText value="{!exp.quoteHeader.RSD_Total_Gross_Profit_Pct__c}"/>
+                </div>
+           </div>
+        </aura:iteration>
+    </div>
+</aura:component>

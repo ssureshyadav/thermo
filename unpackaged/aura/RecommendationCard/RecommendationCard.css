@@ -1,0 +1,297 @@
+.THIS .mycontent  {
+	margin-left: 0;
+	box-sizing: border-box;
+    transition: all 0.2s ease-in-out;
+    background: white;
+    border: 1px solid #DBDAD5;
+    display: table;
+    float: left;
+    margin-bottom: 11px;
+    position: relative;
+
+	min-height: 210px;
+    padding: 30px 30px 13px;
+    margin-right: 1%;
+    width: 100%;
+	text-rendering: optimizelegibility;
+}
+
+.mutedCard.THIS {
+    opacity: 0.3;
+    cursor: not-allowed !important;
+}
+
+.THIS .mycontent.selected  {
+	border-color: #E26129 !important;
+	transition: all 0.2s ease-in-out;
+}
+
+.THIS .mycontent.selected .checkbox {
+	/*display: block;*/
+	/*margin-left: 20%;
+	margin-top: 20%;
+	vertical-align: middle;*/
+	-moz-transition: all .2s ease-in-out;
+	-o-transition: all .2s ease-in-out;
+	-webkit-transition: all .2s ease-in-out;
+	transition: all .2s ease-in-out;
+}
+
+.THIS .mycontent.hover  {
+    border-color: #4771A7 !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.THIS .mycontent.hover .icon {
+	display: none;
+}
+
+
+.THIS li  {
+	margin-left: 0;
+	box-sizing: border-box;
+    transition: all 0.2s ease-in-out;
+    background: white;
+    border: 1px solid #DBDAD5;
+    display: table;
+    float: left;
+    margin-bottom: 11px;
+    position: relative;
+
+}
+
+.THIS .hideMe {
+	display: none;
+}
+
+.THIS .new {
+    transform: rotate(-45deg);
+    font-size: 11px;
+    left: -22px;
+    padding: 7px 0 5px 20px;
+    position: absolute;
+    margin-left: 0;
+    text-indent: 3px;
+    top: 3px;
+    width: 77px;
+    /*background: url(/resource/{!v.namespacePrefix}installAssets/img/status-banner.svg) center no-repeat;*/
+    color: #fff; /*white;*/
+    display: inline-block;
+    font-style: normal;
+    text-transform: uppercase;
+
+}
+
+.THIS .card-alignment {
+	display: table;
+    min-height: 53px;
+    width: 100%;
+}
+
+.THIS .icon-checkbox-toggle {
+	transition: all 0.2s ease-in-out;
+    display: table-cell;
+    height: 32px;
+    vertical-align: middle;
+    width: 32px;
+}
+
+.THIS .icon {
+	font-size: 32px;
+	color: #DBDAD5;
+}
+
+.THIS .checkbox {
+	/*display: none;*/
+	position: relative;
+	margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.THIS .card-details {
+	font-family: "ProximaNova-Regular", helvetica, arial, sans-serif;
+    /*width: 70%;*/
+    display: table-cell;
+    padding: 0 10px;
+    vertical-align: middle;
+}
+
+.THIS .card-details h4 {
+	font-size: 24px;
+	color: #333;
+    display: -webkit-box;
+    line-height: 1;
+    margin-bottom: 5px;
+    margin-top: 0;
+    max-height: 50px;
+    overflow: hidden;
+    word-break: break-word;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.THIS .rating-rank {
+	display: table-cell;
+	/*width: 40%;*/
+	vertical-align: middle;
+	float: right;
+}
+
+.THIS .progress-radial {
+    border: 1px solid #fff;
+    border-top-width: 1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-right-style: solid;
+    border-bottom-style: solid;
+    border-left-style: solid;
+    border-top-color: rgb(255, 255, 255);
+    border-right-color: rgb(255, 255, 255);
+    border-bottom-color: rgb(255, 255, 255);
+    border-left-color: rgb(255, 255, 255);
+    -moz-border-top-colors: none;
+    -moz-border-right-colors: none;
+    -moz-border-bottom-colors: none;
+    -moz-border-left-colors: none;
+    border-image-source: none;
+    border-image-slice: 100% 100% 100% 100%;
+    border-image-width: 1 1 1 1;
+    border-image-outset: 0 0 0 0;
+    border-image-repeat: stretch stretch;
+    border-radius: 50%;
+    border-top-left-radius: 50%;
+    border-top-right-radius: 50%;
+    border-bottom-right-radius: 50%;
+    border-bottom-left-radius: 50%;
+    height: 40px;
+    width: 40px;
+    margin-bottom: 7px;
+}
+
+.THIS .progress-100 {
+  background-image: linear-gradient(270deg, #6fbf4a 50%,rgba(0,0,0,0) 50%,rgba(0,0,0,0)),linear-gradient(90deg, #6fbf4a 50%,#f3f3f3 50%,#f3f3f3);
+}
+.THIS .progress-75 {
+  background-image: linear-gradient(270deg, #e26129 50%,rgba(0,0,0,0) 50%,rgba(0,0,0,0)),linear-gradient(0deg, #e26129 50%,#f3f3f3 50%,#f3f3f3);
+}
+
+.THIS .progress-50 {
+  background-image: linear-gradient(270deg, #febb12 50%,rgba(0,0,0,0) 50%,rgba(0,0,0,0)),linear-gradient(-90deg, #febb12 50%,#f3f3f3 50%,#f3f3f3);
+}
+.THIS .progress-25 {
+  background-image: linear-gradient(90deg, #f3f3f3 50%,rgba(0,0,0,0) 0%,rgba(0,0,0,0)),linear-gradient(0deg, #f3f3f3 50%,#d32027 0%,#d32027);
+}
+
+.THIS .overlay {
+    /*rgb(244, 246, 249)*/
+    background-color: #FFFFFF;
+    border-radius: 50%;
+    font-size: 12px;
+    height: 32px;
+    margin-left: 3px;
+    margin-top: 3px;
+    line-height: 32px;
+    position: absolute;
+    text-align: center;
+    width: 32px;
+}
+
+.THIS .condensed {
+    font-family: 'ProximaNovaAExCn-Light', helvetica, arial, sans-serif;
+    font-size: 11px;
+    letter-spacing: -.025em;
+}
+
+.THIS .description {
+    display: block;
+    margin-bottom: 15px;
+    clear: both;
+    color: #2E2E2C;
+    font-size: 11px;
+    height: 40px;
+    line-height: 18px;
+    margin: 15px 0 20px;
+ }
+
+ .THIS .highlights {
+		/*display: inline-block;*/
+    margin: 0;
+    padding: 0;
+		display: flex;
+		flex-wrap: nowrap;
+ }
+
+ .THIS .highlights li:first-child {
+ 	display: inline-block;
+    padding-left: 0;
+ }
+
+ .THIS .highlights li {
+    /*background: url(/resource/{!v.namespacePrefix}installAssets/img/divider-bg.png) right no-repeat;*/
+    border: 0;
+    color: #333;
+    display: inline-block;
+    float: none;
+    font-size: 10px;
+    margin: 10px 0 0;
+    min-height: 1px;
+    padding: 0 10px;
+    text-transform: uppercase;
+    width: auto;
+ }
+
+.THIS .highlights li:last-child {
+	background: none;
+}
+
+.THIS .revenue {
+    color: #3971B8;
+    display: block;
+    font-family: 'ProximaNova-Regular', helvetica, arial, sans-serif;
+    font-size: 13px;
+    font-style: normal;
+    margin-top: 10px;
+    text-transform: none;
+ }
+
+ .THIS .created {
+    color: #3971B8;
+    display: block;
+    font-family: 'ProximaNova-Regular', helvetica, arial, sans-serif;
+    font-size: 13px;
+    font-style: normal;
+    margin-top: 10px;
+    margin-top: 10px;
+		text-transform: none;
+ }
+
+ .THIS .actions-taken {
+ 	display: block;
+
+ }
+
+ .THIS .actions-taken .icon-span {
+ 	border: 0;
+    color: #3971B8;
+    display: inline-block;
+    font-size: 13px;
+    margin: 0;
+    min-height: 0;
+    padding: 8px 0 0 0;
+    width: auto;
+ }
+ /*potential solution toward sizing card title font and icons for better usablity when in a narrow width view*/
+
+ /*@media (min-width: 64em) {
+	 .THIS .mycontent {
+		 padding: 30px 1vw 13px;
+	 }
+	 .THIS .card-details h4 {
+		 font-size: 1.5vw;
+	 }
+	 .THIS .icon {
+		 font-size: 2.25vmax;
+	 }
+ }*/

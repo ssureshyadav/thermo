@@ -1,0 +1,93 @@
+.THIS {
+    font-family: "ProximaNova-Regular", helvetica, arial, sans-serif;
+    font-size: 12px;
+}
+.THIS .data:nth-child(4n+3),
+.THIS .data:nth-child(4n+4) {
+    margin-bottom: 10px;
+}
+
+.THIS .data span.value,
+.THIS .data span.title {
+    display: inline-block;
+    flex: 1 0 50%;
+    /*float: left;*/
+    font-size: 14px;
+    margin: 3px 3px;
+    padding: 10px 3%;
+    vertical-align: top;
+    min-height: 37px;
+    width: 50%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+    color: #222;
+  }
+.THIS .data span.title {
+    background-color: #E8E7E6;
+    font-family: 'ProximaNova-Semibold';
+  }
+.THIS .data span.value {
+    background-color: #F3F2F1;
+  }
+.THIS .profile-navigation li a {
+    display: block;
+    line-height: 270%;
+    overflow: hidden;
+    padding: 10px;
+    /*border: 0px solid #bbb;*/
+    width: 100%;
+    cursor: pointer;
+    /*background-color: #e9f0f4;*/
+    color: #000;
+    font-family: "ProximaNova-Regular", helvetica, arial, sans-serif;
+    font-weight: 100;
+    font-size: 12px;
+  }
+.THIS .profile-navigation li a:hover {
+    color: #000;
+    text-decoration: none;
+}
+.THIS .profile-navigation .count {
+    background-color: #fefefe;
+    color: #2E2E2C;
+    border: 1px solid #bbb;
+    border-radius: 50%;
+    display: inline-block;
+    height: 30px;
+    margin-right: 10px;
+    text-align: center;
+    width: 30px;
+  }
+.THIS .profile-navigation li a.active {
+    /*background-color: #fff;*/
+    /*border-width: 1px 0 1px 1px;*/
+    color: #2E2E2C;
+    /*box-shadow: -2px 0px 3px -2px rgba(0,0,0,0.26);*/
+    text-decoration: none;
+  }
+
+.THIS .profile-navigation li a.active .count,
+
+.THIS .profile-navigation li a:hover .count {
+    background: #3971B8;
+    color: #fff;
+    border: #3971B8 solid 1px;
+  }
+
+.THIS  #navigation-wrapper{
+    -webkit-transition:width 1s ease;
+    -moz-transition:width 1s ease;
+    -o-transition:width 1s ease;
+    transition:width 1s ease;
+}
+@media screen and (min-width: 1350px){
+  .THIS .data {
+    width: 48%;
+    margin-right: 12px;
+  }
+  .THIS #navigation-wrapper {
+    width: 10%;
+  }
+}

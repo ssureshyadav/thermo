@@ -1,0 +1,192 @@
+<apex:page showHeader="false" 
+			sidebar="false" 
+			standardController="LBI__Recommendation__c" 
+			standardStylesheets="false" 
+			extensions="LBI.MobileRecommendationLogCallController" 
+			docType="html-5.0" 
+			id="thePage" 
+			applyHtmlTag="false" 
+			applyBodyTag="false"
+			showQuickActionVfHeader="false">
+
+	<html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+
+		<head>
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__SLDS092, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+			<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+			<apex:includeScript value="{!URLFOR($Resource.LBI__SLDSValidator)}" />
+			
+			<script type="text/javascript" >
+				var lejQuery = jQuery.noConflict();
+				
+		        lejQuery(document).ready(function(){
+		        	if ({!isInLightning}) {
+		            	lejQuery("div.slds").css("padding", "10px");
+		            }
+		        });
+			</script>
+		</head>
+		
+		<body>
+			<apex:form id="theForm">
+				<div class="slds">
+					<div class="slds-grid slds-wrap">
+
+						<!--Action Buttons -->
+						<div class="slds-col slds-size--1-of-1">
+							<a href="#" class="slds-button slds-button--neutral slds-float--left" onclick="cancel();" id="cancel">
+								<apex:outputText value="{!$Label.lbi__lab_cancel}" />
+							</a>
+							<a href="#" class="slds-button slds-button--brand slds-float--right" id="callbtn" onclick="logCall();">
+								<apex:outputText value="{!$Label.lbi__lab_save}" />
+							</a>
+						</div>
+
+						<div class="slds-col slds-size--1-of-1 slds-m-vertical--small">
+							<h2 class="slds-text-heading--medium">
+								<apex:outputText value="{!$Label.lbi__ais_logcall}" />
+							</h2>
+						</div>
+
+						<div class="slds-col slds-size--1-of-1" id="errorwrapper">
+						</div>
+
+						<div class="slds-col slds-size--1-of-1">
+							<div class="slds-form-element">
+
+								<label class="slds-form-element__label slds-m-top--small" for="subject">
+									<apex:outputtext value="{!$ObjectType.Task.fields.Subject.label}"/>
+								</label>
+								<div class="slds-form-element__control">
+									<input id="subject"  class="slds-input" type="text" html-placeholder="Call" data-required="true" data-fieldName="Subject"/>
+								</div>
+
+								<label class="slds-form-element__label slds-m-top--small" for="description">
+									<apex:outputtext value="{!$ObjectType.Task.fields.Description.label}"/>
+								</label>
+								<div class="slds-form-element__control">
+									<textarea id="description" class="slds-textarea" placeholder="How did the call go?"></textarea>
+								</div>
+
+
+								<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}">
+
+									<label class="slds-form-element__label slds-m-top--small" for="accountId">    
+										<apex:outputText value="{!$Label.lbi__mod_account}" />
+									</label>
+
+									<div class="slds-form-element__control">
+										<span id="accountId" styleclass="slds-form-element__static" type="text">   
+											<apex:outputtext value="{!LBI__Recommendation__c.Account__r.Name}"/>
+										</span>
+									</div>
+								</apex:outputPanel>
+
+								<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}" id="leadflow">
+									<label class="slds-form-element__label slds-m-top--small" for="leadId">    
+										<apex:outputText value="{!$Label.lbi__mod_lead}" />
+									</label>
+									<div class="slds-form-element__control">
+										<span id="leadId" styleclass="slds-form-element__static" type="text">    
+											<apex:outputtext value="{!LBI__Recommendation__c.Lead__r.Name}"/>
+										</span>
+									</div>
+								</apex:outputPanel>
+
+								<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}" id="accountFlow">
+									<div class="slds-form-element slds-m-vertical--medium">
+										<label class="slds-form-element__label slds-m-top--small" for="Account">
+											<apex:outputText value="{!$Label.lbi__mod_contact}" />
+										</label>
+										<div class="slds-form-element__control">
+											<c:Typeahead searchBoxId="contactId" placeholder="Search from Existing Contact" destinationForSelectedId="cntId" primaryFocusField="Name" whereClause="" objectName="Contact" mapParameters="" required="false" accountId="{!LBI__Recommendation__c.LBI__Account__c}">
+											</c:Typeahead>
+										</div>
+									</div>
+								</apex:outputPanel>
+
+								<input type="hidden" name="cntId" id="cntId" />  
+							</div>
+						</div>
+
+					</div>
+				</div>
+
+				<!-- Doing this because, once installed, we're having problems with this field and the standard controller -->
+				<apex:inputHidden value="{!LBI__Recommendation__c.LBI__LeadId__c}" />
+				
+				<script type="text/javascript">
+
+					var imageURL = "{!URLFOR($Resource.SLDS092, 'assets/icons/action-sprite/svg/symbols.svg#close')}";
+					var j$ = jQuery.noConflict();
+
+					j$(document).ready(function () {
+						init();
+					});
+
+					function init() {
+						document.getElementById('subject').value = 'Call';
+					}
+
+					function cancel() {
+						if ('{!$CurrentPage.parameters.fromLead}' == 'true') {
+							//sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&mobilemessage={!$label.MOBILEINFO_RecommendationCallLoggedCancel}&success=0',true);
+							sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+						} else {
+							//sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$label.MOBILEINFO_RecommendationCallLoggedCancel}&success=0',true);
+							sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+						}
+					}
+
+					function logCall() {
+						//if(sforce.one) {
+						if (!validatorSLDSplugin.validate()) {
+							var description = document.getElementById('description').value;
+							var subject = document.getElementById('subject').value;
+							var contactId = document.getElementById('cntId').value;
+							var accountId;
+							if ('{!JSENCODE(Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.Type__c)}' === 'Lead') {
+								contactId = '{!JSENCODE(Recommendation__c.LeadId__c)}';
+							}
+							if ('{!JSENCODE(Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.Type__c)}' === 'Recommendation') {
+								accountId = '{!JSENCODE(Recommendation__c.Account__c)}';
+							} else {
+								accountId = '';
+							}
+							Visualforce.remoting.Manager.invokeAction(
+								'{!$RemoteAction.MobileRecommendationLogCallController.logCall
+														}',
+								subject,
+								description,
+								accountId,
+								'{!JSENCODE(Recommendation__c.Id)}',
+								contactId,
+								function (result, event) {
+								if (event.status) {
+									if ('{!JSENCODE($CurrentPage.parameters.fromLead)}' == 'true') {
+										sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&mobilemessage={!$label.MOBILEINFO_RecommendationCallLogged}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=1', true);
+									} else {
+										sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$label.MOBILEINFO_RecommendationCallLogged}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=1', true);
+									}
+									//sforce.one.navigateToSObject('{!JSENCODE(Recommendation__c.Id)}');
+								} else {
+									validatorSLDSplugin.displayalert(event.message, 'error');
+								}
+							}, {
+								escape : false
+							});
+						}
+					}
+					window.onkeydown = function () {
+						window.focus();
+					}
+				</script>
+
+			</apex:form>
+		</body>
+
+
+	</html>
+
+</apex:page>

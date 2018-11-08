@@ -1,0 +1,116 @@
+<!--
+    Created By  : Suresh Sanneboina
+    Email ID    : 
+    Company     : NTTDATA
+    Date        : 12 June,2017
+    Requirement : W-000180:
+                    T-00354: Dev - Display 'Users in Assigned Territories' list
+    Test Class  : RSDNA_AddUpdateVendorTest
+    Last Updated By : 
+    
+-->
+<aura:component controller="RSDNA_LtngAssignedTerritories" implements="flexipage:availableForRecordHome,force:hasRecordId" access="global" >
+    <aura:attribute name="recordId" type="Id" />
+    <aura:attribute name="lstTerritory" type="RSDNA_LtngAssignedTerritories.UserTerritory[]" />
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <article class="slds-card">
+    <div class="slds-card__header slds-grid">
+    <header class="slds-media slds-media_center slds-has-flexi-truncate">
+      <div class="slds-media__figure">
+        <span class="slds-icon_container slds-icon-standard-contact" title="description of icon when needed">
+         <!-- <svg class="slds-icon slds-icon_small" aria-hidden="true">
+            <use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="/assets/icons/standard-sprite/svg/symbols.svg#contact"></use>
+          </svg> -->
+        </span>
+      </div>
+      <div class="slds-media__body">
+        <h2>
+          <a href="javascript:void(0);" class="slds-card__header-link slds-truncate" title="[object Object]">
+            <span class="slds-text-heading_small">Users in Assigned Territories ({!v.lstTerritory.length})</span>
+          </a>
+        </h2>
+      </div>
+    </header>
+  </div>
+	<aura:renderIf isTrue="{!v.lstTerritory.length > 0}">
+    <div class="slds-card__body slds-card__body_inner slds-scrollable_x" aura:id="searchDiv">
+        <table class="slds-table slds-table--bordered slds-table--cell-buffer slds-no-row-hover">
+            <thead>
+              <tr>
+                 <!-- <th></th> -->
+                 <th>Territory</th>
+                 <th>Full Name</th>
+                  <th>Primary</th>
+                  <th>Role in Territory</th>
+                  <th>Email</th>
+                  <th>Manager</th>
+                  <th>Manager Name</th>
+                  <th>Area Director</th>
+                  <th>Area Director Name </th>
+                  <th>Region</th>
+                  <th>Region Name</th>
+                  <th>Unit</th>
+                  <th>Unit Name</th>
+                  <th>Division</th>
+                  <th>Division Name</th>
+              </tr>
+             </thead>
+            <tbody>
+            <aura:iteration items="{!v.lstTerritory}" var="terr">
+                <tr class="slds-border_bottom">
+                  <!--  <td>
+                        <ui:outputURL value="{!'/setup/own/deleteredirect.jsp?delID='+terr.Id}" label="Remove"/>
+                    </td> -->
+                    <td class="slds-text-body--regular">
+                        <ui:outputURL value="{!'/'+terr.territoryId}" label="{!terr.territory}"/>
+                    </td>
+                    <td class="slds-text-body--regular">
+                        <ui:outputURL value="{!'/'+terr.userId}" label="{!terr.userName}"/>
+                    </td>
+                    <td>
+                        <ui:outputCheckbox aura:id="output" value="{!terr.primary}"/>
+                    </td>
+                    <td>
+                        {!terr.role}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.email}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.areaDirector}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.areaDirectorName}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.parent3}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.parent3Name}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.parent4}
+                    </td>
+                     <td class="slds-text-body--regular">
+                        {!terr.parent4Name}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.parent5}
+                    </td>
+                     <td class="slds-text-body--regular">
+                        {!terr.parent5Name}
+                    </td>
+                    <td class="slds-text-body--regular">
+                        {!terr.parent6}
+                    </td>
+                     <td class="slds-text-body--regular">
+                        {!terr.parent6Name}
+                    </td>
+                </tr>
+            </aura:iteration>  
+            </tbody>
+        </table>
+    </div>
+    </aura:renderIf>
+    </article>
+</aura:component>

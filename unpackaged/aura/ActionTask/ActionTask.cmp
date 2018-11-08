@@ -1,0 +1,105 @@
+<aura:component controller="LBI.LCActionActivityController">
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="recommendations" type="Object[]" />
+
+	<aura:attribute access="public" name="closingMessage" type="String" />
+	<aura:attribute access="public" name="details" type="Object" />
+	<aura:attribute access="public" name="labels" type="Object" />
+	<aura:attribute access="public" name="fields" type="Object" />
+	<aura:attribute access="public" name="whereClause" type="String"/>
+
+	<aura:attribute access="public" name="subject" type="String"/>
+	<aura:attribute access="public" name="description" type="String"/>
+	<aura:attribute access="public" name="assignedTo" type="String"/>
+	<aura:attribute access="public" name="activityDate" type="Date"/>
+	<aura:attribute access="public" name="status" type="String"/>
+	<aura:attribute access="public" name="priority" type="String"/>
+
+    <aura:registerEvent name="cancel" type="LBI:ModalCancel"/>
+    <aura:registerEvent name="save" type="LBI:ModalSave"/>
+
+    <aura:handler name="inputChanged" event="LBI:InputValueChanged" action="{!c.handleLookupChange}" includeFacets="true"/>
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+    <div class="slds-form--stacked slds-p-around--x-small slds-m-bottom--x-small">
+        <aura:if isTrue="{!v.details.workflowType == 'RECOMMENDATION' || v.details.workflowType == 'LEAD'}">
+    		<!-- Do it this way because, otherwise, the lookup loads with no object/field -->
+        	<div class="slds-form-element">
+	        	<!-- Here, any LK to User would do, really-->
+	      		<LBI:InputLookup label="{!v.labels.assignedTo}" sObjectAPIName="{!v.details.objectName}" fieldAPIName="{!v.details.userFieldName}"
+	      				whereClause="" subtitleField="" value="{!v.details.assignedTo}"
+						listIconClass="standard:user" />
+
+        </div>
+        </aura:if>
+      	<div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.subject}</label>
+        	<div class="slds-form-element__control">
+          		<ui:inputText value="{!v.subject}"/>
+        	</div>
+        </div>
+      	<div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.activityDate}</label>
+        	<div class="slds-form-element__control">
+        		<ui:inputDate displayDatePicker="true" value="{!v.activityDate}" />
+        	</div>
+      	</div>
+      	<div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.status}</label>
+        	<div class="slds-form-element__control">
+    			<ui:inputSelect multiple="false" value="{!v.status}" >
+    				<aura:iteration items="{!v.fields.status.options}" var="stat">
+    					<ui:inputSelectOption text="{!stat}" label="{!stat}"/>
+    				</aura:iteration>
+    			</ui:inputSelect>
+    		</div>
+      	</div>
+      	<div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.priority}</label>
+        	<div class="slds-form-element__control">
+    			<ui:inputSelect multiple="false" value="{!v.priority}">
+    				<aura:iteration items="{!v.fields.priority.options}" var="pri">
+    					<ui:inputSelectOption text="{!pri}" label="{!pri}" />
+    				</aura:iteration>
+    			</ui:inputSelect>
+    		</div>
+      	</div>
+        <aura:if isTrue="{!v.details.workflowType == 'RECOMMENDATION'}">
+        	<div class="slds-form-element">
+	        	<label class="slds-form-element__label">{!v.labels.account}</label>
+	        	<div class="slds-form-element__control">
+	          		{!v.details.relatedName}
+	        	</div>
+	        </div>
+	         <div class="slds-form-element">
+        		<!-- Here, any LK to contact would do, really-->
+          		<LBI:InputLookup label="{!v.labels.contact}" sObjectAPIName="{!v.details.objectName}" fieldAPIName="{!v.details.fieldName}"
+    					whereClause="{!v.details.whereClause}" subtitleField=""
+    					listIconClass="standard:contact" />
+	        </div>
+        </aura:if>
+        <aura:if isTrue="{!v.details.workflowType == 'LEAD'}">
+	        <div class="slds-form-element">
+	        	<label class="slds-form-element__label">{!v.labels.lead}</label>
+	        	<div class="slds-form-element__control">
+	          		{!v.details.relatedName}
+	        	</div>
+	        </div>
+        </aura:if>
+        <div class="slds-form-element">
+        	<label class="slds-form-element__label">{!v.labels.description}</label>
+        	<div class="slds-form-element__control">
+          		<ui:inputTextArea value="{!v.description}"/>
+        	</div>
+        </div>
+    </div>
+
+    <div class="actionButtons">
+    	<lightning:button variant="neutral" label="Cancel" onclick="{!c.handleCancelEvent}" />
+		<lightning:button variant="brand" label="Save"  onclick="{!c.handleSaveEvent}" />
+    </div>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

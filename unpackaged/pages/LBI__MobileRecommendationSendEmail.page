@@ -1,0 +1,340 @@
+<apex:page showHeader="false" 
+			sidebar="false" 
+			standardController="LBI__Recommendation__c" 
+			standardStylesheets="false" 
+			docType="html-5.0" 
+			extensions="LBI.MobileRecommendationSendEmailController" 
+			id="thePage"
+			showQuickActionVfHeader="false">
+			
+	<html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+		<head>
+			<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__SLDS092, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+			<apex:stylesheet value="{!$Resource.LBI__TypeaheadCustomCSS}" />
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__SLDSTokenFieldCSS)}"/>
+			<apex:includeScript value="{!URLFOR($Resource.LBI__SLDSValidator)}" />
+			<apex:includeScript value="{!URLFOR($Resource.LBI__SLDSTokenField)}" />
+			<apex:includeScript value="{!URLFOR($Resource.LBI__Typeahead, '/typeahead.bundle.min.js')}"  />
+			
+			<script type="text/javascript" >
+				var lejQuery = jQuery.noConflict();
+				
+		        lejQuery(document).ready(function(){
+		        	if ({!isInLightning}) {
+		            	lejQuery("div.slds").css("padding", "10px");
+		            }
+		        });
+			</script>
+		</head>
+		<body>
+			<apex:form id="theForm">
+				<div class="slds">
+					<div class="slds-grid slds-wrap">
+
+						<div class="slds-col slds-size--1-of-1">
+							<a href="#" class="slds-button slds-button--neutral slds-float--left" onclick="cancel();" id="cancel">
+								<apex:outputText value="{!$Label.lbi__lab_cancel}" />
+							</a>
+							<a href="#" class="slds-button slds-button--brand slds-float--right" id="NavigateToSobjectDetail" onclick="sendEmail();">
+								<apex:outputText value="{!$Label.lbi__ais_send}" />
+							</a>
+						</div>
+
+						<div class="slds-col slds-size--1-of-1 slds-m-top--large">
+							<h2 class="slds-text-heading--medium">
+								<apex:outputText value="{!$Label.lbi__ais_sendemail}" />
+							</h2>
+						</div>
+
+						<div class="slds-col slds-size--1-of-1" id="errorwrapper">
+						</div>
+
+						<div class="slds-col slds-size--1-of-1">
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}" id="thePanel">
+
+								<div class="slds-form-element slds-m-top--medium">
+									<label class="slds-form-element__label" for="accountId">
+										<apex:outputText value="{!$Label.lbi__rep_relatedto}" />
+									</label>
+
+									<div class="slds-form-element__control">
+										<span id="accountId" styleclass="slds-form-element__static" type="text">
+											<apex:outputtext value="{!LBI__Recommendation__c.Account__r.Name}" />
+										</span>
+									</div>
+								</div>
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}" id="leadflow">
+								<div class="slds-form-element slds-m-top--medium">
+									<label class="slds-form-element__label" for="leadId">
+										<apex:outputText value="{!$Label.lbi__rep_relatedto}" />
+									</label>
+									<div class="slds-form-element__control">
+										<span id="leadId" styleclass="slds-form-element__static" type="text">    <apex:outputtext value="{!LBI__Recommendation__c.Lead__r.Name}"/>
+										</span>
+									</div>
+								</div>
+							</apex:outputPanel>
+
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Recommendation','true','false')}" id="acctflow">
+								<div class="slds-form-element slds-grid slds-wrap slds-m-vertical--medium">
+									<div class="slds-col slds-size--12-of-12">
+										<label class="slds-form-element__label" for="Contact">
+											<apex:outputText value="{!$Label.lbi__rep_to}" />
+										</label>
+									</div>
+									<div class="slds-col slds-size--12-of-12" id="contactDiv">
+										<c:Typeahead searchBoxId="contactId" placeholder="Search from Existing Contact" destinationForSelectedId="cntemail" primaryFocusField="Name" key="Email" secondaryFields="Email" whereClause="" objectName="Contact" mapParameters="" required="true" accountId="{!LBI__Recommendation__c.LBI__Account__c}">
+										</c:Typeahead>
+										<button class="slds-button slds-button--neutral reset" style="position: absolute; float: right; top: 32px; display: block; padding: 0 5px; font-size: 12px; line-height: 1.5; right: 7px;" type="reset" id="clearButton">
+											<apex:outputText value="{!$Label.lbi__rep_clear}" />
+										</button>
+									</div>
+								</div>
+							</apex:outputPanel>
+
+							<apex:outputPanel layout="none" rendered="{!IF(LBI__Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.LBI__Type__c=='Lead','true','false')}" id="ToPanel">
+								<div class="slds-form-element slds-m-vertical--medium">
+									<label class="slds-form-element__label" for="leadId">
+										<apex:outputText value="{!$Label.lbi__rep_to}" />
+									</label>
+									<div class="slds-form-element__control">
+										<span id="leadId" styleclass="slds-form-element__static" type="text">
+											<apex:outputtext value="{!LBI__Recommendation__c.Lead__r.Name}" />
+										</span>
+									</div>
+								</div>
+							</apex:outputPanel>
+
+
+							<div class="slds-form-element slds-m-vertical--medium">
+								<label class="slds-form-element__label" for="tokenfield-typeahead">
+									<apex:outputText value="{!$Label.lbi__rep_ccaddress}" />
+								</label>
+								<div class="slds-form-element__control">
+									<input id="tokenfield-typeahead" value="" class="typeahead slds-input" type="text"/>
+								</div>
+							</div>
+
+							<div class="slds-form-element slds-m-vertical--medium">
+								<label class="slds-form-element__label" for="subject">
+									<apex:outputText value="*{!$Label.lbi__rep_subject}" />
+								</label>
+								<div class="slds-form-element__control">
+									<input id="subject" class="slds-input" type="text" data-required="true" data-fieldName="Subject"/>
+								</div>
+							</div>
+
+							<div class="slds-form-element slds-m-vertical--medium">
+								<label class="slds-form-element__label" for="bodyEmail">
+									<apex:outputText value="{!$Label.lbi__rep_body}" />
+								</label>
+								<div class="slds-form-element__control">
+									<textarea id="bodyEmail" class="slds-textarea" style="height:300px">
+									</textarea>
+								</div>
+							</div>
+
+							<input type="hidden" name="cntemail" id="cntemail" />
+							<input type="hidden" name="cntId" id="cntId" />
+
+						</div>
+
+					</div>
+				</div>
+				<!-- Doing this because, once installed, we're having problems with this field and the standard controller -->
+				<apex:inputHidden value="{!LBI__Recommendation__c.LBI__LeadId__c}" />
+
+				<script type="text/javascript">
+					var j$ = jQuery.noConflict();
+
+					j$(document).ready(function () {
+						init();
+						
+					});
+
+					function init() {
+						document.getElementById('bodyEmail').value = null; // bug in SF1 and hence explicitly setting it to a null value so that cursor is kept at extreme left
+						j$('#clearButton').hide();
+						j$('#contactId').data("value", '');
+
+					}
+
+					setInterval(function () {
+						var data = j$('#contactId').data("value"),
+						val = j$('#contactId').val();
+
+						if (data !== val) {
+							j$('#contactId').data("value", val);
+
+							if (val == '') {
+								j$('#clearButton').hide();
+							} else {
+								j$('#clearButton').show();
+							}
+						}
+					}, 100);
+
+					var imageURL = "{!URLFOR($Resource.SLDS092, 'assets/icons/action-sprite/svg/symbols.svg#close')}";
+					var ccData;
+					if (!ccData)
+						ccData = {};
+
+					ccData = {
+
+						ccQuery :
+						function (inputstring, typeaheadCallback) {
+							Visualforce.remoting.Manager.invokeAction(
+								'{!$RemoteAction.MobileRecommendationSendEmailController.getTypeaheadData}',
+								inputstring,
+								function (result, event) {
+								if (event.status) {
+									//console.log(result);
+									var dataList = [];
+									var selectedtokens = []; //Selected tokens
+									selectedtokens = getccMailIds();
+									j$.each(result, function (i, r) {
+										dataList.push({
+											id : r.Id,
+											value : r.Name + '(' + r.Email + ')',
+											sfdcId : r.Id
+										});
+									});
+									//Remove already selected values from typeahead
+									for (var i = dataList.length - 1; i >= 0; i--) {
+										for (var j = 0; j < selectedtokens.length; j++) {
+											if (dataList[i].value.substring(dataList[i].value.lastIndexOf("(") + 1, dataList[i].value.lastIndexOf(")")) === selectedtokens[j]) {
+												dataList.splice(i, 1);
+											}
+										}
+									}
+									typeaheadCallback(dataList);
+								} else {
+									// TODO: deal with error
+									typeaheadCallback([]);
+								}
+							}, {
+								escape : false
+							});
+						}
+
+					};
+
+					j$('#tokenfield-typeahead').tokenfield({
+						typeahead : [
+							null, {
+								source : ccData.ccQuery
+							}
+						]
+					});
+
+					j$('#tokenfield-typeahead').on('tokenfield:createdtoken', function (event) {
+						//j$('#subject').focus();//SF1 behaves weird so this is workaround to move to next field after user selection ..
+					});
+
+					j$('#tokenfield-typeahead').on('tokenfield:createtoken', function (event) {
+						var existingTokens = j$(this).tokenfield('getTokens');
+						j$.each(existingTokens, function (index, token) {
+							if (token.value === event.attrs.value)
+								event.preventDefault();
+						});
+					});
+
+					function getElementvalue(documentId) {
+						return document.getElementById(documentId).value;
+					}
+
+					function getccMailIds() {
+						var setEmailIds = [];
+						j$(".token").find('.token-label').each(function () {
+							setEmailIds.push(extractEmailId(j$(this).text()));
+						});
+						return setEmailIds;
+					}
+
+					function extractEmailId(emailString) {
+						var regExp = /\(([^)]+)\)/;
+						var matches = regExp.exec(emailString);
+						if (matches) {
+							return matches[1];
+						} else {
+							return emailString;
+						}
+					}
+
+					function cancel() {
+						if ('{!$CurrentPage.parameters.fromLead}' == 'true') {
+							//sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&mobilemessage={!$label.MOBILEINFO_RecommendationEmailSentCancelled}&success=0',true);
+							sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+						} else {
+							//sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$label.MOBILEINFO_RecommendationEmailSentCancelled}&success=0',true);
+							sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=0', true);
+						}
+					}
+
+					function sendEmail() {
+						//console.log(validatorSLDSplugin.validate());
+						if (!validatorSLDSplugin.validate()) {
+							var cc = [];
+							var cc = getccMailIds();
+							//var cc =[];
+							var subject = getElementvalue('subject');
+							var body = getElementvalue('bodyEmail');
+							var toEmail = getElementvalue('cntemail');
+							var relatedTo;
+							var iscontact;
+							var contactId;
+							if ('{!JSENCODE(Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.Type__c)}' === 'Lead') {
+								relatedTo = '{!LBI__Recommendation__c.LBI__LeadId__c}';
+								toEmail = '{!JSENCODE(Recommendation__c.Lead__r.Email)}';
+								iscontact = false;
+								contactId = '';
+							}
+							if ('{!JSENCODE(Recommendation__c.PlayRun__r.LatticeWorkflowSetting__r.Type__c)}' === 'Recommendation') {
+								relatedTo = '{!LBI__Recommendation__c.LBI__Account__c}';
+								iscontact = true;
+								contactId = document.getElementById('contactId').getAttribute("data-id");
+							}
+
+							Visualforce.remoting.Manager.invokeAction(
+								'{!$RemoteAction.MobileRecommendationSendEmailController.sendEmail}',
+								subject,
+								toEmail,
+								cc,
+								body,
+								relatedTo,
+								'{!JSENCODE(Recommendation__c.Id)}',
+								contactId,
+								iscontact,
+								function (result, event) {
+								if (event.status) {
+									if ('{!JSENCODE($CurrentPage.parameters.fromLead)}' == 'true') {
+										sforce.one.navigateToURL('{!$Page.MobileLeadRecommendationCard}?id={!JSENCODE(Recommendation__c.LeadId__c)}&mobilemessage={!$label.MOBILEINFO_RecommendationEmailSent}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=1', true);
+									} else {
+										sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$label.MOBILEINFO_RecommendationEmailSent}&backCounter={!JSENCODE($CurrentPage.parameters.backCounter)}&success=1', true);
+									}
+									//sforce.one.navigateToSObject('{!JSENCODE(Recommendation__c.Id)}');
+								} else {
+									// TODO: deal with error by inserting error message on DOM
+									validatorSLDSplugin.displayalert(event.message, 'error');
+								}
+							}, {
+								escape : false
+							});
+						}
+					}
+
+					window.onkeydown = function () { // Workaround for known issue with SFDC(https://success.salesforce.com/issues_view?id=a1p30000000T5l1AAC)
+						window.focus();
+					}
+				</script>
+
+			</apex:form>
+		</body>
+	</html>
+</apex:page>

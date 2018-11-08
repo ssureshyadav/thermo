@@ -1,0 +1,18 @@
+<aura:component controller="LBI.LCRecommendationIFrameController"> <!-- implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName" access="global">-->
+	<aura:attribute access="global" name="recordId" type="String" />
+	<aura:attribute access="global" name="sObjectName" type="String" />
+	<aura:attribute access="global" name="iFrameType" type="String" default="Talking Points"/>
+    
+    <aura:attribute access="public" name="jsonData" type="String" />
+	<aura:attribute access="public" name="url" type="String" />
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+	<div>
+		<iframe src="{!v.url}"
+				width="100%" 
+				height="900px"
+				aura:id="iFrameContainer"
+				class="iFrameContainer" />
+	</div>
+</aura:component>

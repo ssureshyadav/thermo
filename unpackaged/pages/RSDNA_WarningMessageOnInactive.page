@@ -1,0 +1,23 @@
+<apex:page standardController="Account" Extensions="RSDNA_WarningMessageOnInactive">
+    <apex:includeScript value="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.0.0-beta1/jquery.min.js" /> 
+    <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+        <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.min.css')}" />
+        <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+        <style>
+            .message ul,.messageText{
+                color:red;
+            }
+        </style>
+
+        <div class="BBLDS">
+            <apex:form rendered="{!Account.RSD_Display_Alert__c == true}">
+                <warning>
+                    <div class="messageText">
+                    <apex:outputText: value="Verify if Contacts related to this Account need to be associated to another account(s) before setting the Status to 'Inactive'."/>
+                    <apex:CommandButton id="cmdButton" value="Dismiss" action="{!Dismiss}" styleclass="slds-button slds-button--brand"/>
+                    </div>
+                </warning>
+            </apex:form>
+        </div>
+    </html>
+</apex:page>

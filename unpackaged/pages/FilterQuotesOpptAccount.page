@@ -1,0 +1,30 @@
+<apex:page standardController="RSD_Quote_Header__c">
+    <apex:pageBlock title="Opportunity Detail Page">
+        <apex:detail relatedList="false"/>
+        
+        <apex:pageBlockSection collapsible="true" title="Quotes" columns="1">
+            <apex:relatedList list="Quotes"/>
+        </apex:pageBlockSection>
+        
+<!--Is the bottom needed-->  
+        
+        <apex:pageBlockSection collapsible="true" title="Products" columns="1">
+            <apex:relatedList list="OpportunityLineItems"/>
+        </apex:pageBlockSection>
+        
+        <apex:pageBlockSection collapsible="true" title="Open Activities" columns="1">
+            <apex:relatedList list="OpenActivities"/>
+        </apex:pageBlockSection>
+        
+        <apex:pageBlockSection collapsible="true" title="Activity History" columns="1">
+            <apex:relatedList list="Activity Histories"/>
+        </apex:pageBlockSection>
+        
+        <apex:pageBlockSection collapsible="true" title="Notes & Attachments" columns="1"> 
+            <apex:relatedList list="CombinedAttachments"/>
+        </apex:pageBlockSection>
+    </apex:pageBlock>
+</apex:page>
+
+<!--All that's left to do is supply id in the URL as ?id=01010145adas100   is this correct? How would I do this?6-->
+<!--This will override a standard page with this page and quote related list won't show up since its not on the code-->

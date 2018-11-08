@@ -1,0 +1,47 @@
+<apex:page standardController="Account" extensions="RSDNA_AccTOGAllOppViewCtrl">  
+
+   
+<apex:pagemessages id="OppEmptyErr"></apex:pagemessages>
+<apex:form >
+<apex:outputPanel rendered="{!($User.UIThemeDisplayed == 'Theme3'||$User.UIThemeDisplayed == 'Theme2')}" style="overflow:auto;width:750px;height:250px" >
+        <apex:pageBlock title="All Related Opportunities" rendered="{!noOppFlag}">        
+           <apex:pageBlockTable value="{!Opplst}" var="Opp" >
+                     
+           <apex:column headerValue="Account Name" >
+           <apex:commandLink action="/{!Opp.AccountId}" value="{!Opp.account.Name}" onclick="window.open('/{!Opp.AccountId}','_blank');window.location.top.reload();" />   
+           </apex:column>            
+           
+           <apex:column headerValue="Opportunity Name">
+           <apex:commandLink action="/{!Opp.id}" value="{!Opp.Name}" onclick="window.open('/{!Opp.Id}','_blank');window.location.top.reload();" />   </apex:column>       
+           <apex:column value="{!Opp.Amount}"/>
+           <apex:column value="{!Opp.CloseDate}"/>
+           <apex:column value="{!Opp.StageName}"/> 
+           <apex:column value="{!Opp.Probability}"/>
+           <apex:column value="{!Opp.Opportunity_Owner_TEXT__c}"/>                  
+           </apex:pageBlockTable>        
+        </apex:pageBlock> 
+</apex:outputPanel>
+
+<apex:outputPanel rendered="{!($User.UIThemeDisplayed == 'Theme4d'||$User.UIThemeDisplayed == 'Theme4t')}" style="overflow:auto;width:750px;height:250px" >
+      <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+      <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.min.css')}" />
+      <apex:stylesheet value="{!URLFOR($Resource.BBLDS_W17, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+        <div class="BBLDS">
+        <apex:dataTable value="{!Opplst}" var="Opp" styleClass="slds-table slds-table--bordered slds-table--striped">
+           <apex:column headerValue="Account Name" >
+           <apex:commandLink action="/{!Opp.AccountId}" value="{!Opp.account.Name}" onclick="window.open('/{!Opp.AccountId}','_blank');window.location.top.reload();" />   
+           </apex:column> 
+           <apex:column headerValue="Opportunity Name">
+           <apex:commandLink action="/{!Opp.id}" value="{!Opp.Name}" onclick="window.open('/{!Opp.Id}','_blank');window.location.top.reload();" />       
+           </apex:column>      
+           <apex:column value="{!Opp.Amount}" headerValue="Amount"/>
+           <apex:column value="{!Opp.CloseDate}" HeaderValue="Closed Date"/>
+           <apex:column value="{!Opp.StageName}" headerValue="Stage Name"/> 
+           <apex:column value="{!Opp.Probability}" headerValue="Probability"/>
+           <apex:column value="{!Opp.Opportunity_Owner_TEXT__c}" HeaderValue="Opportunity Owner"/>                
+        </apex:dataTable>
+        </div>
+      </html>
+</apex:outputPanel>
+</apex:form>
+</apex:page>

@@ -1,0 +1,130 @@
+<apex:page showHeader="false" 
+			sidebar="false" 
+			standardController="LBI__Recommendation__c" 
+			standardStylesheets="false" 
+			extensions="LBI.MobileRecommendationOppLinkController" 
+			showQuickActionVfHeader="false" 
+			docType="html-5.0" 
+			id="thePage">
+			
+	<html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+		<body>
+			<apex:includeScript value="{!URLFOR($Resource.LBI__jQuery)}" />
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__SLDS092, 'assets/styles/salesforce-lightning-design-system-vf.css')}" />
+			<apex:stylesheet value="{!URLFOR($Resource.LBI__installAssets, 'styles/main.css')}"/>
+			<apex:includeScript value="{!URLFOR($Resource.LBI__SLDSValidator)}" />
+			
+			<script type="text/javascript" >
+				var lejQuery = jQuery.noConflict();
+				
+		        lejQuery(document).ready(function(){
+		        	if ({!isInLightning}) {
+		            	lejQuery("div.slds").addClass("lightning");
+		            }
+		        });
+			</script>
+			
+			<apex:outputPanel layout="none" rendered="{!!constructedProperly}" >
+				<apex:pageMessages id="infoMessages" />
+			</apex:outputPanel>
+
+			<apex:outputPanel layout="none" rendered="{!constructedProperly}">
+				<apex:form id="theForm">
+					<div class="slds">
+						<div class="slds-grid slds-wrap">
+	
+							<apex:outputPanel id="recommendationEdit" layout="none">
+	
+								<div class="slds-col slds-size--1-of-1">
+									<a href="#" class="slds-button slds-button--neutral slds-float--left" onclick="cancel();" id="cancel">
+										<apex:outputText value="{!$Label.lbi__lab_cancel}" />
+									</a>
+									<a href="#" class="slds-button slds-button--brand slds-float--right" id="NavigateToSobjectDetail" onclick="linktoExisitingOpportunity();">
+										<apex:outputText value="{!$Label.lbi__lab_save}" />
+									</a> 
+								</div>
+	
+								<div class="slds-col slds-size--1-of-1 slds-m-vertical--small">
+									<h2 class="slds-text-heading--medium">
+										<apex:outputText value="{!$Label.lbi__rep_link_to_existing_opportunity}" />
+									</h2>
+								</div>
+	
+								<div class="slds-col slds-size--1-of-1" id="errorwrapper">
+								</div>
+	
+								<div class="slds-col slds-size--1-of-1">
+									<apex:outputPanel layout="block" styleClass="slds-box slds-theme--error slds-theme--inverse-text slds-m-vertical--medium" rendered="{!!showOpportunitylookup}" id="errorId">
+										<apex:pageMessage summary="No opportunities can be linked" severity="error" strength="3" id="errorMessage"/>
+									</apex:outputPanel>
+	
+									<apex:outputPanel layout="none" rendered="{!showOpportunitylookup}" id="oppKp"> 
+										<div class="slds-form-element">
+											<div class="slds-form-element__control">
+												<c:Typeahead searchBoxId="opportunityId" placeholder="Search from Existing Opportunity" destinationForSelectedId="oppId" primaryFocusField="Name" whereClause="{!whereclauseforTypeaheadcomponent}" objectName="Opportunity" mapParameters="{!mapParameters}" required="true" accountId="{!LBI__Recommendation__c.LBI__Account__c}">
+												</c:Typeahead>
+												<input type="hidden" name="oppId" id="oppId" />     
+												<input type="hidden" name="oppName" id="oppName" />
+											</div>
+										</div>
+									</apex:outputPanel>
+								</div>    
+	
+							</apex:outputPanel>
+						</div>
+					</div>
+					<script>
+	
+						var imageURL = "{!URLFOR($Resource.SLDS092, 'assets/icons/action-sprite/svg/symbols.svg#close')}";
+						var j$ = jQuery.noConflict();
+	
+						var saveClicked = false;
+	
+						function resetSaveClick() {
+							saveClicked = false;
+						}
+	
+						function linktoExisitingOpportunity() {
+							if (saveClicked) {
+								// do nothing
+							} else {
+								saveClicked = true;
+	
+								//if(sforce.one) {
+								if (!validatorSLDSplugin.validate()) {
+									var opportunityId = document.getElementById('oppId').value;
+									Visualforce.remoting.Manager.invokeAction(
+										'{!$RemoteAction.MobileRecommendationOppLinkController.linkToExisitingOpportunity}', '{!JSENCODE(Recommendation__c.Id)}', opportunityId,
+										function (result, event) {
+										if (event.status) {
+											sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$Label.MOBILEINFO_RecommendationLinkedToOpportunity}&success=1', true);
+										} else {
+											resetSaveClick();
+	
+											// TODO: deal with error by inserting error message on DOM
+											validatorSLDSplugin.displayalert(event.message, 'error');
+										}
+									}, {
+										escape : false
+									});
+								}
+							}
+	
+						}
+	
+						function cancel() {
+							//sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&mobilemessage={!$Label.MOBILEINFO_RecommendationLinkedToOppCancel}&success=0',true);
+							// COD-552
+							sforce.one.navigateToURL('{!$Page.RecommendationsList}?id={!JSENCODE(Recommendation__c.Id)}&success=0', true);
+						}
+	
+						window.onkeydown = function () { // Workaround for known issue with SFDC(https://success.salesforce.com/issues_view?id=a1p30000000T5l1AAC)
+							window.focus();
+						}
+					</script>
+				</apex:form>
+			</apex:outputPanel>
+
+		</body>
+	</html>
+</apex:page>

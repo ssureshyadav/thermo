@@ -1,0 +1,77 @@
+<aura:component controller="LBI.LCRecommendationPageController">
+	<aura:attribute access="public" name="parentId" type="String" />
+	<aura:attribute access="public" name="sObjectName" type="String" />
+	<aura:attribute access="public" name="showRevenue" type="Boolean" default="false" />
+	<aura:attribute access="public" name="showScore" type="Boolean" default="false" />
+
+	<aura:attribute access="public" name="namespacePrefix" type="String" default="" />
+
+	<aura:attribute access="public" name="hasInitialized" type="Boolean" />
+	<aura:attribute access="public" name="pagedRecommendations" type="Object[]" />
+	<aura:attribute access="public" name="labels" type="Object" />
+	<aura:attribute access="public" name="pageCounter" type="Integer" />
+	<aura:attribute access="public" name="pageDisplay" type="String" />
+	<aura:attribute access="public" name="selectedRecommendations" type="String[]" />
+	<aura:attribute access="public" name="disabledRecommendations" type="String[]" />
+	<aura:attribute access="public" name="selectedWorkflowType" type="String" />
+
+	<aura:attribute access="private" name="recDetail" type="Aura.Component" />
+	<aura:attribute access="private" name="isShowingDetail" type="Boolean" />
+
+  	<aura:handler name="init" value="{!this}" action="{!c.init}"/>
+
+    <aura:handler name="click" event="LBI:CardClick" action="{!c.handleClickEvent}" includeFacets="true" />
+   	<aura:handler name="select" event="LBI:CardSelect" action="{!c.handleSelectEvent}" includeFacets="true" />
+   	<aura:handler name="back" event="LBI:RecommendationIndividualClose" action="{!c.handleBackEvent}" includeFacets="true" />
+    <aura:handler name="refresh" event="LBI:RefreshPage" action="{!c.handleRefreshPage}" includeFacets="true" />
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" />
+
+    <aura:if isTrue="{!v.hasInitialized &amp;&amp; v.pagedRecommendations.length &gt; 0 &amp;&amp; !v.isShowingDetail}">
+		<!--Pagination and Actions-->
+		<lightning:layout verticalAlign="center" multipleRows="true" pullToBoundary="">
+			<lightning:layoutItem >
+	        	<lightning:buttonIcon iconName="utility:chevronleft" size="large" onclick="{! c.previousPage }" aura:id="prevButton"  />
+	        </lightning:layoutItem>
+	        <lightning:layoutItem >
+				<lightning:buttonIcon iconName="utility:chevronright" size="large" onclick="{! c.nextPage }" aura:id="nextButton"  />
+	        </lightning:layoutItem>
+	        <lightning:layoutItem flexibility="auto" padding="horizontal-small">
+	        	{!v.pageDisplay}&nbsp;
+	        	<aura:if isTrue="{!v.selectedRecommendations.length &gt; 0}">
+	        		<div class="selected-pagination">
+	        			({!v.selectedRecommendations.length} selected)
+	        		</div>
+	        	</aura:if>
+	        </lightning:layoutItem>
+	        <lightning:layoutItem flexibility="auto" size="12" mediumDeviceSize="6" largeDeviceSize="8">
+				<LBI:ActionButtons parentId="{!v.parentId}"
+									sObjectName="{!v.sObjectName}"
+									workflowType="{!v.selectedWorkflowType}"
+									recommendations="{!v.selectedRecommendations}" />
+	        </lightning:layoutItem>
+		</lightning:layout>
+
+		<br/>
+		<!--Cards-->
+		<lightning:layout verticalAlign="center" multipleRows="true" pullToBoundary="small">
+			<aura:iteration items="{!v.pagedRecommendations}" var="rec">
+				<lightning:layoutItem padding="horizontal-small" flexibility="auto" size="12" mediumDeviceSize="6" largeDeviceSize="6" class="rec-card-wrapper">
+					<LBI:RecommendationCard namespacePrefix="{!v.namespacePrefix}" recommendation="{!rec}" isEmbedded="true" showRevenue="{!v.showRevenue}" showScore="{!v.showScore}" labels="{!v.labels}" />
+				</lightning:layoutItem>
+			</aura:iteration>
+		</lightning:layout>
+
+    </aura:if>
+    <aura:if isTrue="{!v.hasInitialized &amp;&amp; v.pagedRecommendations.length == 0}">
+    	<div class="no-recommendations">
+    		{!v.labels.noRecs}
+    	</div>
+    </aura:if>
+
+    <aura:if isTrue="{!v.hasInitialized &amp;&amp; v.isShowingDetail}">
+    	{!v.recDetail}
+    </aura:if>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>

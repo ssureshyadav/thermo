@@ -1,0 +1,9 @@
+<apex:page sidebar="{!showSidebar}"
+		   controller="LBI.AdminSwitcherController"
+		   action="{!redirectUser}">
+
+<apex:pageMessages />
+
+<apex:outputText style="display:none;" value="{!$Label.lbi__error_accountextensionrecordtracenew}" rendered="false" />
+
+</apex:page>

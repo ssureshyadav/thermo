@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ApexPage xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>31.0</apiVersion>
+    <availableInTouch>true</availableInTouch>
+    <confirmationTokenRequired>false</confirmationTokenRequired>
+    <description>Drag &amp; Drop will allow your company to quickly add multiple attachments (like screen shots of cases, email from files, PDFs and more) against any standard or custom object. Just Drag and Drop them inside of your Salesforce today.</description>
+    <label>About</label>
+</ApexPage>

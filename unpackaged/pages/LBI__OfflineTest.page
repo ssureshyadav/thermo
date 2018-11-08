@@ -1,0 +1,109 @@
+<apex:page showHeader="true" 
+			sidebar="false" 
+			controller="LBI.OfflineTestController" >
+
+	<apex:sectionHeader title="Offline Test" />
+
+	<apex:pageMessages id="pageMessages" />
+
+	<apex:form id="theForm">
+		<apex:pageBlock id="theBlock">
+
+			<apex:pageBlockSection id="theSection" collapsible="false" columns="1" >
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!createTestRecords}" value="Create Test Recommendations" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!startBatchProcessing}" value="Begin Batch Processing" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!startNightlyJob}" value="Start Nightly Job (Stats)" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!unConnectToLattice}" value="Reset Connected to Lattice Flag (Make Not Connected)" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!resetSetupData}" value="Reset setup information to go through install wizard (Data must be deleted first)" />
+				</apex:pageBlockSectionItem>
+
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!deleteAllData}" value="Delete all Lattice Data (except error logs or setup data) - May need to be run multiple times" />
+				</apex:pageBlockSectionItem>`
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!processPlaysAndRecommendations}" value="Process plays and recommendations from Stage" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!processRecommendations}" value="Process recommendations from Stage" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!deleteRecommendationsAndPlayRuns}" value="Delete Recommendations (up to 9500) and Play Runs" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!runInstallScriptNotNew}" value="Run Install Script (Not New Install)" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!runInstallScriptNew}" value="Run Install Script (NEW Install)" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!deleteErrorLogs}" value="Delete Error Logs (up to 10000)" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:commandButton action="{!deleteTestDataLegacy}" value="Delete Test Data Using Legacy (Slow!) Method" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:selectList value="{!objectName}" size="1" multiselect="false">
+						<apex:selectOptions value="{!objects}"/>
+					</apex:selectList>
+					<apex:commandButton action="{!deleteRecords}" value="!! Delete ALL Records !!" />
+				</apex:pageBlockSectionItem>
+
+				<apex:pageBlockSectionItem >
+					<apex:outputPanel layout="none">
+						Select a Sync Batch Step:
+						<apex:inputField value="{!dummyErrorLog.LBI__LatticeSyncBatchStep__c}" />
+					</apex:outputPanel>
+					<apex:commandButton action="{!createErrorLogs}" value="Create Test Error Logs" />
+
+				</apex:pageBlockSectionItem>
+
+			</apex:pageBlockSection>
+
+		</apex:pageBlock>
+		<apex:pageBlock >
+
+			<apex:pageBlockSection id="latticeFeaturesSection" collapsible="false" columns="1">
+				<apex:actionRegion id="settingsRegion">
+
+					<apex:commandButton action="{!saveSettings}" value="Save Settings" />
+
+					<apex:pageBlockTable value="{!featureSettings}" var="theFeature">
+						<apex:column headerValue="Feature Name" >
+							<apex:outputText value="{!theFeature.name}" />
+						</apex:column>
+						<apex:column headerValue="Is Enabled?" >
+							<apex:inputCheckbox value="{!theFeature.isEnabled}" />
+						</apex:column>
+						<apex:column headerValue="Admin Enabled?">
+							<apex:inputCheckbox value="{!theFeature.adminEnabled}" />
+						</apex:column>
+					</apex:pageBlockTable>
+				</apex:actionRegion>
+			</apex:pageBlockSection>
+		</apex:pageBlock>
+
+	</apex:form>
+</apex:page>

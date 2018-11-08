@@ -1,0 +1,14 @@
+<apex:page sidebar="false"
+			showHeader="false"
+			standardController="LBI__Recommendation__c" 
+			extensions="LBI.ConvertIntermediateController"
+			showQuickActionVfHeader="false"
+			standardStylesheets="false"
+			docType="html-5.0" 
+			applyHtmlTag="false" 
+			applyBodyTag="false">
+			
+			<apex:include pageName="LBI__MobileRecommendationLeadConvert" rendered="{!isLeadBasedRecommendation}" />
+			<apex:include pageName="LBI__MobileRecommendationConvert" rendered="{!!isLeadBasedRecommendation}" />
+
+</apex:page>

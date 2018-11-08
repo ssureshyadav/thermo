@@ -1,0 +1,115 @@
+<aura:component controller="LBI.LCRecommendationIndividualController" implements="flexipage:availableForRecordHome,force:hasRecordId,force:hasSObjectName" access="global">
+	<aura:attribute access="global" name="recordId" type="String" description="Id of the Container Record" />
+	<aura:attribute access="global" name="sObjectName" type="String" description="Object Name of the Container Record" />
+	<aura:attribute access="global" name="backButton" type="Boolean" description="Show or Hide the Back Button" default="false"/>
+
+	<aura:attribute access="public" name="recommendation" type="Object" description="Current Recommendation being Displayed" />
+	<aura:attribute access="public" name="labels" type="Object" description="Localized Labels" />
+	<aura:attribute access="public" name="showRevenue" type="Boolean" default="false" />
+	<aura:attribute access="public" name="showScore" type="Boolean" default="false" />
+	<aura:attribute access="public" name="progress" type="Integer" />
+	<aura:attribute access="public" name="valueToOutput" type="String" />
+	<aura:attribute access="public" name="displayTextClass" type="Boolean" />
+	<aura:attribute access="public" name="selectedRecommendations" type="String[]" description="This property sends the current Rec Id to the buttons" />
+	<aura:attribute access="public" name="namespacePrefix" type="String" default="" description="Namespace Prefix" />
+
+    <aura:registerEvent name="back" type="LBI:RecommendationIndividualClose"/>
+
+    <aura:handler name="refresh" event="LBI:RefreshPage" action="{!c.handleRefreshPage}" includeFacets="true" />
+
+    <ltng:require scripts="{!$Resource.LBI__LightningJSUtilities_js}" afterScriptsLoaded="{!c.init}" />
+
+	<!-- this is the way to link to a resource, according sfdcfox here http://salesforce.stackexchange.com/questions/143630 -->
+	<!-- Needed for the icons/fonts -->
+	<!-- <ltng:require styles="{!'/resource/' + v.namespacePrefix + 'installAssets/styles/main.css'}"/> -->
+	<ltng:require styles="{!'/resource/' + v.namespacePrefix + 'lightningAssets/styles/icons.css'}"/>
+
+	<lightning:layout verticalAlign="center" multipleRows="true" pullToBoundary="">
+		<aura:if isTrue="{!v.backButton}">
+			<lightning:layoutItem >
+				<lightning:button variant="neutral" label="{!v.labels.back}" iconName="utility:chevronleft" onclick="{! c.goBack }" />
+			</lightning:layoutItem>
+		</aura:if>
+		<lightning:layoutItem flexibility="auto" size="12" mediumDeviceSize="6" largeDeviceSize="8">
+			<LBI:ActionButtons parentId="{!v.recordId}"
+								sObjectName="{!v.sObjectName}"
+								workflowType="{!v.recommendation.workflowType}"
+								recommendations="{!v.selectedRecommendations}" />
+        </lightning:layoutItem>
+	</lightning:layout>
+
+	<h3 class="rec-display-name" title="{!v.recommendation.displayName}">
+    	<!-- <span class="icon rec-title glyphicon-sf-{!v.recommendation.PlayTypeNameClass__c}"></span> -->
+			<span class="{!'icon rec-title glyphicon-sf-' + v.recommendation.playTypeClass}" aura:id="ptIcon"></span>
+    	<!-- <span class="icon rec-title" aura:id="ptIcon"><aura:unescapedHtml value="{!v.recommendation.playTypeIcon}" /></span> -->
+        {!v.recommendation.displayName}
+    </h3>
+
+    <div class="account-details">
+
+        <p class="description">{!v.recommendation.description}</p>
+
+         <!--the inline styles in the <LI> are to avoid namespace issues with the images we're using-->
+				<ul class="highlights">
+					<aura:if isTrue="{!v.showRevenue}">
+							<li style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/divider-bg.png) right no-repeat'}">
+								{!v.labels.estRevenue}
+								<span class="revenue">
+										<lightning:formattedNumber value="{!v.recommendation.monetaryValue}" style="currency" maximumFractionDigits="0" />
+								</span>
+							</li>
+						</aura:if>
+
+					<li style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/divider-bg.png) right no-repeat'}">{!v.labels.daysActive}
+						<span class="revenue">
+							{!v.recommendation.ageInDays}
+						</span>
+					</li>
+
+					<li style="{!'background: url(/resource/' + v.namespacePrefix + 'installAssets/img/divider-bg.png) right no-repeat'}">
+
+						{!v.labels.actions}
+						<aura:if isTrue="{! !v.recommendation.hasEmail &amp;&amp;
+												!v.recommendation.hasCall &amp;&amp;
+												!v.recommendation.hasTask &amp;&amp;
+												!v.recommendation.hasEvent}">
+							<span class="created">
+								{!v.labels.none}
+							</span>
+						</aura:if>
+
+						<span class="actions-taken">
+							<aura:if isTrue="{!v.recommendation.hasEmail}">
+								<lightning:icon class="icon-span" iconName="utility:email" size="x-small" alternativeText="Email Sent"/>
+							</aura:if>
+							<aura:if isTrue="{!v.recommendation.hasCall}">
+								<lightning:icon class="icon-span" iconName="utility:call" size="x-small" alternativeText="Call Made"/>
+							</aura:if>
+							<aura:if isTrue="{!v.recommendation.hasTask}">
+								<lightning:icon class="icon-span" iconName="utility:task" size="x-small" alternativeText="Task Recorded"/>
+							</aura:if>
+							<aura:if isTrue="{!v.recommendation.hasEvent}">
+								<lightning:icon class="icon-span" iconName="utility:event" size="x-small" alternativeText="Event Recorded"/>
+							</aura:if>
+						</span>
+					</li>
+
+				</ul>
+
+
+        <span class="rating-rank">
+    		<div class="{!'progress-radial progress-' + v.progress}">
+              <div class="{!v.displayTextClass}">{!v.valueToOutput}</div>
+            </div>
+	    </span>
+
+	</div>
+
+    <div class="slds-p-around--small">
+        <LBI:RecommendationTabs parentRecordId="{!v.recordId}"
+                                objectContainer="{!v.sObjectName}"
+                                isDetail="true" />
+    </div>
+
+	<lightning:spinner variant="brand" size="large" aura:id="loadingSpinner"/>
+</aura:component>
