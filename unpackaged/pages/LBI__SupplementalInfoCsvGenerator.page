@@ -1,3 +1,0 @@
-<apex:page controller="LBI.SupplementalInfoCsvGeneratorController"
-			sidebar="{!showSidebar}"
-			contentType="text/csv#SupplementalInformation.csv">{!csv}</apex:page>

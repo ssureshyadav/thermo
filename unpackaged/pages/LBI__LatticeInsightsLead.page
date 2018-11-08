@@ -1,3 +1,0 @@
-<apex:page standardController="Lead" extensions="LBI.LatticeInsightsController">
-	<c:LatticeInsights jsonComponentString="{!jsonComponentString}" />
-</apex:page>
